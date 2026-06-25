@@ -21,6 +21,13 @@ TIMESTAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u '+%Y-%m-%dT%H:%M
 echo "[Security-Hook] ${TIMESTAMP} 执行代码安全合规预检..."
 echo "[Security-Hook] 目标: ${TARGET}"
 
+# ── 环境自检：macOS 自带 BSD grep 不支持 \b ─────────────────────────────
+if ! echo "test" | grep -q -E '\btest\b' 2>/dev/null; then
+  echo "[Security-Hook] ⚠️  当前 grep 不支持 \b 词边界 (常见于 macOS BSD grep)"
+  echo "[Security-Hook] ⚠️  所有扫描模式会静默失效，请安装 GNU grep: brew install grep"
+  echo "[Security-Hook] ⚠️  安装后用 ggrep 路径或 export PATH=\"/usr/local/opt/grep/libexec/gnubin:\$PATH\""
+fi
+
 # ── 判定目标类型 ────────────────────────────────────────────────────────────
 SCAN_MODE="full"
 if [[ -f "$TARGET" ]]; then

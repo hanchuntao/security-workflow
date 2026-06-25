@@ -29,6 +29,9 @@ Claude Code 插件层                     MCP 流程引擎 (Python)
 |------|--------|------|
 | Python 3.10+ | 🟡 可选 | MCP 流程引擎（工单流转、上线卡点）。不装也能用扫描功能 |
 | Bash 4.0+ | ✅ 必需 | 钩子脚本运行环境。macOS 自带 3.2 版本过低，需 `brew install bash`；Linux 一般已内置 5.x；Windows 需 Git Bash 或 WSL |
+| Git | ✅ 必需 | 脚本优先用 `git ls-files` 获取追踪文件（自动尊重 `.gitignore`） |
+| Perl 5+ | ✅ 必需 | `auto-fix-security.sh` 用于跨平台安全删除行。macOS/Linux 已内置；Windows 随 Git Bash 内置 |
+| GNU grep | 🟡 推荐 | macOS 自带 BSD grep 不支持 `\b` 词边界，所有扫描模式会静默失效。安装：`brew install grep`（之后系统用 `ggrep` 命令） |
 | Claude Code | ✅ 必需 | 插件宿主 |
 
 Python 端零依赖 — 只用标准库（`json`, `datetime`, `pathlib`, `threading`, `enum`），无需 `pip install`。
@@ -136,6 +139,18 @@ SECURITY_FIX_APPLY=true bash hooks/auto-fix-security.sh
 - **手术刀式匹配**：只删 `console.log("debug...")` / `print("temp...")` / `pdb.set_trace()` / `debugger;` / 空 TODO 注释
 - **备份+回滚**：修改前自动备份，失败自动恢复
 - **审计日志**：每次运行写入 `$SECURITY_WORKFLOW_DATA/fix-audit/`
+
+## 各平台兼容性
+
+| 依赖 | macOS | Linux | Windows |
+|------|-------|-------|---------|
+| Bash 4.0+ | `brew install bash` | 已内置 | Git Bash / WSL |
+| GNU grep（`\b` 支持） | `brew install grep` | 已内置 | Git Bash 内置 |
+| Perl 5+ | 已内置 | 已内置 | Git Bash 内置 |
+| Git | `xcode-select --install` | `apt install git` | Git Bash / WSL |
+| Python 3.10+ | 🟡 可选（已内置 3.x，检查版本） | 🟡 可选 | 🟡 可选 |
+
+> **macOS 特别提醒**：macOS 自带 BSD grep **不支持 `\b` 词边界**，会导致所有安全扫描模式静默失效（不报错，但匹配不到任何东西）。安装 GNU grep 后，`check-bash.sh` 启动时会自动检测并告警。
 
 ## 统一数据目录
 
