@@ -1,12 +1,41 @@
 {
-  "pre_save_file": [
-    "./check-bash.sh"
-  ],
-  "pre_run_command": [
-    "./check-bash.sh"
-  ],
-  "pre_git_commit": [
-    "./auto-fix-security.sh",
-    "./check-bash.sh"
-  ]
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/check-bash.sh\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/check-bash.sh\" \"${CLAUDE_PLUGIN_ROOT}\""
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "pre-commit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/auto-fix-security.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/check-bash.sh\""
+          }
+        ]
+      }
+    ]
+  }
 }
