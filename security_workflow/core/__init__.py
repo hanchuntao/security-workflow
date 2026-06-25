@@ -271,3 +271,55 @@ def check_deploy_gate(project: str = "", branch: str = "") -> dict[str, Any]:
         "warnings": warnings,
         "verdict": "允许上线" if allowed else "阻断上线",
     }
+
+
+def generate_review_report(
+    project: str = "",
+    branch: str = "",
+    scan_mode: str = "全量扫描",
+    report_type: str = "review",
+) -> dict[str, Any]:
+    """一站式：收集工单数据 → 生成报告 → 落盘。
+
+    供 /review 和 /deploy 命令在流程末尾调用。
+
+    Returns:
+        {"filepath": str, "ticket_count": int, "finding_count": int, ...}
+    """
+    from ..report import generate_and_save
+
+    all_tickets = load_all_tickets()
+
+    # 过滤指定项目/分支的工单
+    filtered: list[dict] = []
+    for t in all_tickets:
+        if project and t.project and t.project != project:
+            continue
+        if branch and t.branch and t.branch != branch:
+            continue
+        filtered.append(t.to_dict())
+
+    # 执行 deploy gate（用于报告中展示阻断状态）
+    gate = check_deploy_gate(project=project, branch=branch) if report_type == "deploy" else None
+
+    # 自动检测项目名
+    effective_project = project or detect_project_name()
+
+    filepath = generate_and_save(
+        project=effective_project,
+        branch=branch or "main",
+        scan_mode=scan_mode,
+        tickets=filtered,
+        deploy_gate=gate,
+        report_type=report_type,
+    )
+
+    total_findings = sum(len(t.get("findings", [])) for t in filtered)
+
+    return {
+        "filepath": str(filepath),
+        "project": effective_project,
+        "ticket_count": len(filtered),
+        "finding_count": total_findings,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }

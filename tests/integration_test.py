@@ -8,7 +8,9 @@ import json
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+_project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _project_root not in sys.path:
+    sys.path.append(_project_root)
 os.environ["SECURITY_WORKFLOW_DATA"] = ".security-workflow-data"
 
 from security_workflow.mcp_server import handle_request
@@ -179,10 +181,10 @@ def main() -> None:
         print(f"    WARN: {w['ticket_id']} [{w['risk_level']}] - {w['reason']}")
 
     # ═══════════════════════════════════════════════════════════
-    # Phase 5: Audit trail
+    # Phase 5: Audit trail + Report generation
     # ═══════════════════════════════════════════════════════════
     print(f"\n{B}")
-    print("  Phase 5: Audit trail")
+    print("  Phase 5: Audit trail + Report generation")
     print(B)
 
     trail = call_tool("get_audit_trail", {"limit": 50})
@@ -195,6 +197,27 @@ def main() -> None:
 
     print(f"\n{B}")
     print("  PASS: /review -> /deploy 联动链路验证完成")
+    print(B)
+
+    # ═══════════════════════════════════════════════════════════
+    # Phase 6: Auto report generation
+    # ═══════════════════════════════════════════════════════════
+    print(f"\n{B}")
+    print("  Phase 6: Report generation")
+    print(B)
+
+    report = call_tool("generate_report", {
+        "project": "my-project",
+        "branch": "main",
+        "scan_mode": "全量扫描",
+        "report_type": "review",
+    })
+    rp = report["report"]
+    print(f"  [OK] Report generated: {rp['filepath']}")
+    print(f"  [OK] Tickets: {rp['ticket_count']}, Findings: {rp['finding_count']}")
+
+    print(f"\n{B}")
+    print("  PASS: Full pipeline verified (review + deploy + report)")
     print(B)
 
 

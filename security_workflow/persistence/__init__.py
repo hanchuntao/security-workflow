@@ -10,9 +10,10 @@ from typing import Any
 
 from ..model import Ticket, ScanFinding, AuditEntry
 from ..definition.enums import RiskLevel, TicketStatus
+from ..definition.constants import DEFAULT_DATA_DIR
 
 # 存储根目录（可通过环境变量覆盖）
-STORAGE_ROOT = Path(os.environ.get("SECURITY_WORKFLOW_DATA", ".security-workflow-data"))
+STORAGE_ROOT = Path(os.environ.get("SECURITY_WORKFLOW_DATA", DEFAULT_DATA_DIR))
 lock = threading.Lock()
 
 

@@ -12,9 +12,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from ..definition.enums import RiskLevel
+from ..definition.constants import DEFAULT_DATA_DIR
 
 # 数据目录（与 persistence 共用）
-DATA_ROOT = Path(os.environ.get("SECURITY_WORKFLOW_DATA", ".security-workflow-data"))
+DATA_ROOT = Path(os.environ.get("SECURITY_WORKFLOW_DATA", DEFAULT_DATA_DIR))
 _notify_lock = threading.Lock()
 
 

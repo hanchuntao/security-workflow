@@ -36,6 +36,14 @@ mkdir -p "$AUDIT_DIR" "$BACKUP_DIR"
 # 每一条都是经过人工审计的、100% 确定为调试/临时/废弃代码的正则
 # 核心原则：宁可漏删一千，不可误删一行
 
+# 校验 Bash 版本：declare -A (关联数组) 需要 Bash 4.0+
+if [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
+  echo "[ERROR] 此脚本需要 Bash 4.0 或更高版本，当前版本: ${BASH_VERSION}" >&2
+  echo "[ERROR] macOS 默认 bash 3.2 不支持关联数组，请安装 Bash 4+:" >&2
+  echo "[ERROR]   brew install bash" >&2
+  exit 1
+fi
+
 declare -A SURGICAL_PATTERNS
 SURGICAL_PATTERNS=(
   # ── Python 调试/临时语句 ──
@@ -92,7 +100,8 @@ apply_fix() {
   # 使用 perl 而非 sed -i (彻底解决 BSD/GNU 兼容性问题)
   local before_lines
   before_lines=$(wc -l < "$file")
-  perl -i.bak -ne "print unless /${pattern}/" "$file" 2>/dev/null || {
+  # 使用 Perl -s 开关安全传递变量，避免 Shell 变量内插到 Perl 代码字符串中
+  perl -i.bak -sne 'print unless $pat' -- -pat="$pattern" "$file" 2>/dev/null || {
     echo "  [ERROR] perl 修复失败: ${file}" | tee -a "$AUDIT_LOG"
     cp "$backup" "$file"  # 回滚
     return 1

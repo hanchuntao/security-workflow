@@ -19,7 +19,7 @@ import sys
 import traceback
 from typing import Any
 
-from .core import create_ticket, transition_ticket, reject_ticket, check_deploy_gate
+from .core import create_ticket, transition_ticket, reject_ticket, check_deploy_gate, generate_review_report
 from .persistence import load_ticket, load_all_tickets, read_audit_trail
 
 # ── JSON-RPC dispatcher ────────────────────────────────────────────────────────
@@ -88,6 +88,18 @@ TOOLS: dict[str, dict[str, Any]] = {
             "properties": {
                 "ticket_id": {"type": "string", "description": "可选，按工单过滤"},
                 "limit": {"type": "integer", "default": 100},
+            },
+        },
+    },
+    "generate_report": {
+        "description": "生成安全评审报告并落盘。自动汇总工单、漏洞、上线卡点数据，输出 Markdown 报告。",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "project": {"type": "string", "default": "", "description": "项目名"},
+                "branch": {"type": "string", "default": "", "description": "分支名"},
+                "scan_mode": {"type": "string", "default": "全量扫描", "description": "扫描模式"},
+                "report_type": {"type": "string", "enum": ["review", "deploy"], "default": "review"},
             },
         },
     },
@@ -190,6 +202,15 @@ def _dispatch_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
             limit=args.get("limit", 100),
         )
         return {"count": len(entries), "entries": entries}
+
+    elif name == "generate_report":
+        result = generate_review_report(
+            project=args.get("project", ""),
+            branch=args.get("branch", ""),
+            scan_mode=args.get("scan_mode", "全量扫描"),
+            report_type=args.get("report_type", "review"),
+        )
+        return {"success": True, "report": result}
 
     raise ValueError(f"Unknown tool: {name}")
 

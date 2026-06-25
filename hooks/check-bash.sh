@@ -18,6 +18,15 @@ set -euo pipefail
 TARGET="${1:-.}"
 TIMESTAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u '+%Y-%m-%dT%H:%M:%SZ')"
 
+# 校验 TARGET 为合法路径
+if [[ -n "$1" ]]; then
+  if command -v realpath &>/dev/null; then
+    TARGET=$(realpath "$1" 2>/dev/null || echo "$1")
+  elif [[ -f "$1" ]] || [[ -d "$1" ]]; then
+    TARGET="$(cd "$(dirname "$1")" 2>/dev/null && pwd)/$(basename "$1")"
+  fi
+fi
+
 echo "[Security-Hook] ${TIMESTAMP} 执行代码安全合规预检..."
 echo "[Security-Hook] 目标: ${TARGET}"
 
@@ -77,7 +86,10 @@ scan_file() {
   [[ -f "$file" ]] || return
   [[ -s "$file" ]] || return
   local fsize
-  fsize=$(wc -c < "$file" 2>/dev/null || echo 0)
+  fsize=$(wc -c < "$file" 2>/dev/null) || {
+    fsize=0
+    echo "  [WARN] 无法读取文件大小: ${file}" >&2
+  }
   [[ "$fsize" -lt 5242880 ]] || { echo "  [SKIP] ${file} — 文件过大 (${fsize} bytes)"; return; }
 
   # 跳过故意包含漏洞的测试样本目录
