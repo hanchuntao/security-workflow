@@ -55,7 +55,7 @@ def main() -> None:
                 }
             ],
             "branch": "main",
-            "project": "excaliapp",
+            "project": "my-project",
         },
         {
             "ticket_id": "SW-002",
@@ -93,7 +93,7 @@ def main() -> None:
                 },
             ],
             "branch": "main",
-            "project": "excaliapp",
+            "project": "my-project",
         },
         {
             "ticket_id": "SW-003",
@@ -111,7 +111,7 @@ def main() -> None:
                 }
             ],
             "branch": "main",
-            "project": "excaliapp",
+            "project": "my-project",
         },
     ]
 
@@ -130,7 +130,7 @@ def main() -> None:
     print("  Phase 2: /deploy branch=main -- deploy gate")
     print(B)
 
-    gate = call_tool("check_deploy_gate", {"project": "excaliapp", "branch": "main"})
+    gate = call_tool("check_deploy_gate", {"project": "my-project", "branch": "main"})
     print(f"  Verdict: {gate['verdict']}")
     print(f"  Blocked by ({len(gate['blocked_by'])}):")
     for b in gate["blocked_by"]:
@@ -171,7 +171,7 @@ def main() -> None:
     print("  Phase 4: /deploy after fixes")
     print(B)
 
-    gate2 = call_tool("check_deploy_gate", {"project": "excaliapp", "branch": "main"})
+    gate2 = call_tool("check_deploy_gate", {"project": "my-project", "branch": "main"})
     print(f"  Verdict: {gate2['verdict']}")
     print(f"  Blocked by: {len(gate2['blocked_by'])}")
     print(f"  Warnings: {len(gate2['warnings'])}")

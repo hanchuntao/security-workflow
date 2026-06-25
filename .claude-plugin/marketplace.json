@@ -16,7 +16,14 @@
       "description": "企业代码安全评审插件 — /review 安全评审 + /deploy 上线卡点 + MCP 流程引擎",
       "homepage": "https://github.com/hanchuntao/security-workflow",
       "license": "MIT",
-      "keywords": ["security", "code-review", "SAST", "devsecops", "compliance", "owasp"]
+      "keywords": [
+        "security",
+        "code-review",
+        "SAST",
+        "devsecops",
+        "compliance",
+        "owasp"
+      ]
     }
   ]
 }

@@ -92,7 +92,7 @@ SECURITY_FIX_APPLY=true bash hooks/auto-fix-security.sh
 
 | 参数 | 可选值 | 默认 | 说明 |
 |------|--------|------|------|
-| scope | file / project | project | 扫描范围 |
+| scope | file / project | project | `project` = 全项目扫描；`file` = 仅当前文件 |
 | level | low / mid / high / all | all | 最低检测风险等级 |
 | mode | increment / full | full | 增量快扫 / 全量深度 |
 | workflow | true / false | true | 是否创建工单、联动流程引擎 |
@@ -110,6 +110,27 @@ SECURITY_FIX_APPLY=true bash hooks/auto-fix-security.sh
 | force | true / false | false | 紧急热修复用，需安全负责人审批 |
 | workflow | true / false | true | 联动流程引擎 |
 
+## 项目名配置
+
+创建工单时需要关联项目名。**默认自动检测**，无需手动填写：
+
+| 优先级 | 来源 | 说明 |
+|--------|------|------|
+| 1 | `SECURITY_WORKFLOW_PROJECT` 环境变量 | 最高优先级，适合 CI/CD 场景 |
+| 2 | `.security-workflow` 配置文件 | 在项目根目录创建 `{"project": "my-app"}` |
+| 3 | 当前目录名 | 默认回退，无需任何配置 |
+
+```bash
+# 方式1: 环境变量（CI/CD 推荐）
+export SECURITY_WORKFLOW_PROJECT="my-backend-api"
+
+# 方式2: 配置文件（项目内推荐）
+echo '{"project": "my-backend-api"}' > .security-workflow
+
+# 方式3: 什么都不做，自动取目录名
+# cd ~/work/my-backend-api → project = "my-backend-api"
+```
+
 ## 环境变量
 
 | 变量 | 默认值 | 说明 |
@@ -117,6 +138,7 @@ SECURITY_FIX_APPLY=true bash hooks/auto-fix-security.sh
 | `SECURITY_FIX_APPLY` | false | `true` 启用实际修复（默认干跑） |
 | `SECURITY_FIX_VERBOSE` | false | `true` 输出完整 diff |
 | `SECURITY_WORKFLOW_DATA` | .security-workflow-data | 统一数据目录（日志、备份、工单、审计） |
+| `SECURITY_WORKFLOW_PROJECT` | (当前目录名) | 项目名，用于工单分组和上线卡点过滤 |
 | `SECURITY_WORKFLOW_ENGINE_PATH` | ./security_workflow | MCP 引擎 Python 包路径 |
 | `SECURITY_WORKFLOW_ENV` | production | 运行环境标识 |
 

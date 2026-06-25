@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
+import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from ..definition.enums import (
@@ -13,6 +16,48 @@ from ..definition.enums import (
     is_blocking_status,
     is_closed_status,
 )
+
+# ── 项目名自动检测 ────────────────────────────────────────────────────────────
+
+# 缓存在模块级别，避免重复读取
+_cached_project: str | None = None
+
+
+def detect_project_name() -> str:
+    """自动检测当前项目名。
+
+    优先级:
+    1. 环境变量 SECURITY_WORKFLOW_PROJECT
+    2. .security-workflow 配置文件中的 project 字段
+    3. 当前工作目录名
+
+    结果缓存在模块级别，首次调用后不再重复检测。
+    """
+    global _cached_project
+    if _cached_project is not None:
+        return _cached_project
+
+    # 1. 环境变量
+    env_project = os.environ.get("SECURITY_WORKFLOW_PROJECT", "").strip()
+    if env_project:
+        _cached_project = env_project
+        return _cached_project
+
+    # 2. 配置文件
+    config_path = Path(".security-workflow")
+    if config_path.exists():
+        try:
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+            config_project = config.get("project", "").strip()
+            if config_project:
+                _cached_project = config_project
+                return _cached_project
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    # 3. 工作目录名
+    _cached_project = Path.cwd().name
+    return _cached_project
 from ..model import Ticket, ScanFinding, AuditEntry
 from ..persistence import save_ticket, load_ticket, load_all_tickets, append_audit
 from ..timer import is_overdue
@@ -25,8 +70,18 @@ def create_ticket(
     branch: str = "",
     project: str = "",
 ) -> Ticket:
-    """创建安全评审工单."""
+    """创建安全评审工单。
+
+    project 为空时自动检测：
+      1. $SECURITY_WORKFLOW_PROJECT 环境变量
+      2. .security-workflow 配置文件 project 字段
+      3. 当前目录名
+    """
     risk_level = RiskLevel(risk_level_str)
+
+    # 自动检测项目名
+    if not project:
+        project = detect_project_name()
 
     findings: list[ScanFinding] = []
     for fd in findings_data:
