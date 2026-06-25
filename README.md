@@ -23,7 +23,26 @@ Claude Code 插件层                     MCP 流程引擎 (Python)
 
 ## 快速开始
 
-### 1. 验证 MCP 流程引擎能启动
+### 前置条件
+
+| 条件 | 必需？ | 说明 |
+|------|--------|------|
+| Python 3.10+ | 🟡 可选 | MCP 流程引擎（工单流转、上线卡点）。不装也能用扫描功能 |
+| Bash 4.0+ | ✅ 必需 | 钩子脚本运行环境（Windows 需 Git Bash 或 WSL） |
+| Claude Code | ✅ 必需 | 插件宿主 |
+
+Python 端零依赖 — 只用标准库（`json`, `datetime`, `pathlib`, `threading`, `enum`），无需 `pip install`。
+
+### 1. 安装插件
+
+```bash
+claude plugins marketplace add security-workflow hanchuntao/security-workflow
+claude plugins install security-workflow@security-workflow
+```
+
+安装后 `/review` 和 `/deploy` 即可使用。MCP 流程引擎由 Claude Code 自动启动（通过 `.mcp.json` 配置），无需用户手动运行。
+
+### 2. 验证 MCP 流程引擎能启动
 
 ```bash
 cd security-workflow
@@ -32,15 +51,17 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | python3 -m s
 
 预期输出包含 `"serverInfo":{"name":"security-workflow-mcp-engine","version":"1.0.1"}`。
 
-### 2. 跑集成测试
+如果输出乱码或报错，检查 Python 版本 ≥ 3.10，且 `security_workflow/` 目录在当前路径下。
+
+### 3. 跑集成测试
 
 ```bash
 python3 tests/integration_test.py
 ```
 
-模拟 `/review` → 建工单 → `/deploy` 卡点 → 整改闭环 → 再次卡点的完整链路。测试结束后自动输出审计轨迹和 PASS/FAIL 判定。
+模拟 `/review` → 建工单 → `/deploy` 卡点 → 整改闭环 → 再次卡点的完整链路。测试结束后输出审计轨迹和 PASS/FAIL 判定。
 
-### 3. 手动测试各个组件
+### 4. 手动测试各个组件
 
 ```bash
 # 安全预检钩子（单文件）
@@ -57,14 +78,6 @@ bash hooks/auto-fix-security.sh
 # 低危自动修复（实际应用）
 SECURITY_FIX_APPLY=true bash hooks/auto-fix-security.sh
 ```
-
-### 4. 安装到 Claude Code
-
-```bash
-claude plugins install ./security-workflow
-```
-
-安装后 `/review` 和 `/deploy` 命令即可使用。
 
 ## 命令参考
 
