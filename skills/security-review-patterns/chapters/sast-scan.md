@@ -33,4 +33,13 @@
 4. 汇总全局风险统计与安全评级
 
 ## 五、扫描豁免规则
-生产环境无任何漏洞豁免权限，所有检测风险必须按等级完成整改或备案审批
+### 生产代码
+无任何漏洞豁免权限，所有检测风险必须按等级完成整改或备案审批。
+
+### 扫描器自检夹具（豁免目录）
+以下目录包含故意构造的漏洞样本，用于验证扫描器/钩子检测能力，扫描时必须跳过：
+- `tests/vuln_cases/`
+- `tests/vuln_samples/`
+- `tests/security_test_fixtures/`
+
+> 此规则与 `security-scanner.md` 四-补充、`hooks/check-bash.sh` skip_vuln_dirs() 完全对齐。

@@ -84,6 +84,15 @@ model: sonnet
 4. 结果精准可控：必须输出精准行号、完整漏洞描述、可落地整改建议，杜绝模糊判定
 5. 数据闭环留存：所有扫描报告结构化存储，同步至流程引擎，永久留存用于安全审计
 
+## 四-补充、扫描豁免目录（扫描器自检夹具）
+以下目录包含**故意构造的漏洞样本**，用于校验扫描器/钩子本身的检测能力。扫描时必须跳过，不产生工单：
+- `tests/vuln_cases/`
+- `tests/vuln_samples/`
+- `tests/security_test_fixtures/`
+- 任何路径包含 `vuln_cases`、`vuln_samples`、`security_test_fixtures` 的文件
+
+> 此规则与 `hooks/check-bash.sh` 的 `skip_vuln_dirs()` 函数完全对齐。
+
 ## 五、输出结果形式
 1. 标准化结构化漏洞清单（适配修复Agent、流程引擎自动解析）
 2. 单条漏洞精准说明：风险原理、利用场景、合规依据、初步整改建议
