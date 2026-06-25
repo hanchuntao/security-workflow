@@ -5,20 +5,20 @@ Claude Code 插件 + Python MCP 流程引擎，实现 **扫描 → 分级修复 
 ## 整体架构
 
 ```
-Claude Code 插件层                     MCP 流程引擎 (Python)
-┌──────────────────────────┐       ┌──────────────────────────┐
-│  commands/               │       │  security_workflow/      │
-│   /security-workflow:review  │──RPC──│   mcp_server.py (入口)    │
-│   /security-workflow:deploy  │       │   core/         (引擎)    │
-│                          │       │   definition/   (枚举)    │
-│  agents/                 │       │   model/        (数据)    │
-│   security-scanner       │       │   persistence/  (存储)    │
-│   quick-fix              │       │   timer/        (超时)    │
-│                          │       │   spi/          (扩展)    │
-│  hooks/                  │       │   report/       (报告)    │
-│   check-bash.sh (预检)    │       └──────────────────────────┘
-│   auto-fix-security.sh    │
-└──────────────────────────┘
+Claude Code 插件层                          MCP 流程引擎 (Python)
+┌────────────────────────────────┐     ┌──────────────────────────┐
+│  commands/                     │     │  security_workflow/      │
+│   /security-workflow:review    │─RPC─│   mcp_server.py (入口)    │
+│   /security-workflow:deploy    │     │   core/         (引擎)    │
+│                                │     │   definition/   (枚举)    │
+│  agents/                       │     │   model/        (数据)    │
+│   security-scanner             │     │   persistence/  (存储)    │
+│   quick-fix                    │     │   timer/        (超时)    │
+│                                │     │   spi/          (扩展)    │
+│  hooks/                        │     │   report/       (报告)    │
+│   check-bash.sh (预检)          │     └──────────────────────────┘
+│   auto-fix-security.sh          │
+└────────────────────────────────┘
 ```
 
 ## 快速开始
@@ -140,6 +140,7 @@ echo '{"project": "my-backend-api"}' > .security-workflow
 | `SECURITY_WORKFLOW_DATA` | .security-workflow-data | 统一数据目录（日志、备份、工单、审计） |
 | `SECURITY_WORKFLOW_PROJECT` | (当前目录名) | 项目名，用于工单分组和上线卡点过滤 |
 | `SECURITY_WORKFLOW_ENGINE_PATH` | ./security_workflow | MCP 引擎 Python 包路径 |
+| `SECURITY_WORKFLOW_DEBUG` | false | `true` 启用完整 traceback 输出（生产环境应关闭） |
 | `SECURITY_WORKFLOW_ENV` | production | 运行环境标识 |
 
 ## 钩子

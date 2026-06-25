@@ -1,6 +1,6 @@
 {
   "name": "security-workflow",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "企业生产级代码安全评审流水线插件 — SAST静态扫描 + 三级分级修复 + 工单流转 + 上线卡点 + 合规审计全闭环",
   "author": {
     "name": "Chuntao Han",
