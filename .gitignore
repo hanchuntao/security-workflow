@@ -1,0 +1,7 @@
+# Unified security data directory (runtime artifacts)
+.security-workflow-data/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo

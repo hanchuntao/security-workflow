@@ -1,0 +1,46 @@
+{
+  "name": "security-workflow",
+  "version": "1.0.1",
+  "description": "企业生产级代码安全评审流水线插件 — SAST静态扫描 + 三级分级修复 + 工单流转 + 上线卡点 + 合规审计全闭环",
+  "author": {
+    "name": "Chuntao Han",
+    "url": "https://github.com/hanchuntao/security-workflow"
+  },
+  "repository": "https://github.com/hanchuntao/security-workflow",
+  "license": "MIT",
+  "keywords": [
+    "security",
+    "code-review",
+    "SAST",
+    "vulnerability-scanning",
+    "compliance",
+    "OWASP",
+    "enterprise",
+    "static-analysis",
+    "CI/CD",
+    "devsecops"
+  ],
+  "category": "security",
+  "commands": ["./commands/review.md", "./commands/deploy.md"],
+  "agents": ["./agents/security-scanner.md", "./agents/quick-fix.md"],
+  "skills": ["./skills/security-review-patterns"],
+  "hooks": "./hooks/hooks.json",
+  "mcpServers": {
+    "security-workflow-mcp-engine": {
+      "command": "python3",
+      "args": ["-m", "security_workflow.mcp_server"],
+      "env": {
+        "PYTHONPATH": "${SECURITY_WORKFLOW_ENGINE_PATH:-./security_workflow}",
+        "ENV": "${SECURITY_WORKFLOW_ENV:-production}"
+      }
+    }
+  },
+  "entry_scope": ["**/*.py", "**/*.js", "**/*.ts", "**/*.java", "**/*.go", "**/*.php", "**/*.vue", "**/*.html", "**/*.sh", "**/*.yml", "**/*.yaml", "**/*.json", "**/*.bash", "**/*.zsh"],
+  "global_constraints": [
+    "严格执行高/中/低三级漏洞分级管控，高危漏洞禁止自动修复、阻断上线",
+    "所有扫描、修复、评审数据结构化留存，支撑安全审计合规",
+    "上线卡点无豁免权限，禁止人工跳过安全校验流程",
+    "所有漏洞整改遵循最小代码改动原则，保障业务无损",
+    "所有流程必须联动security-workflow引擎完成工单闭环流转"
+  ]
+}

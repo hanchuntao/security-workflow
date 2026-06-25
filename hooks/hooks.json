@@ -1,0 +1,12 @@
+{
+  "pre_save_file": [
+    "./check-bash.sh"
+  ],
+  "pre_run_command": [
+    "./check-bash.sh"
+  ],
+  "pre_git_commit": [
+    "./auto-fix-security.sh",
+    "./check-bash.sh"
+  ]
+}
