@@ -28,7 +28,7 @@ Claude Code 插件层                     MCP 流程引擎 (Python)
 | 条件 | 必需？ | 说明 |
 |------|--------|------|
 | Python 3.10+ | 🟡 可选 | MCP 流程引擎（工单流转、上线卡点）。不装也能用扫描功能 |
-| Bash 4.0+ | ✅ 必需 | 钩子脚本运行环境（Windows 需 Git Bash 或 WSL） |
+| Bash 4.0+ | ✅ 必需 | 钩子脚本运行环境。macOS 自带 3.2 版本过低，需 `brew install bash`；Linux 一般已内置 5.x；Windows 需 Git Bash 或 WSL |
 | Claude Code | ✅ 必需 | 插件宿主 |
 
 Python 端零依赖 — 只用标准库（`json`, `datetime`, `pathlib`, `threading`, `enum`），无需 `pip install`。
