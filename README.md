@@ -8,8 +8,8 @@ Claude Code 插件 + Python MCP 流程引擎，实现 **扫描 → 分级修复 
 Claude Code 插件层                     MCP 流程引擎 (Python)
 ┌──────────────────────────┐       ┌──────────────────────────┐
 │  commands/               │       │  security_workflow/      │
-│   /review  (安全评审)     │──RPC──│   mcp_server.py (入口)    │
-│   /deploy  (上线卡点)     │       │   core/         (引擎)    │
+│   /security-workflow:review  │──RPC──│   mcp_server.py (入口)    │
+│   /security-workflow:deploy  │       │   core/         (引擎)    │
 │                          │       │   definition/   (枚举)    │
 │  agents/                 │       │   model/        (数据)    │
 │   security-scanner       │       │   persistence/  (存储)    │
@@ -43,7 +43,7 @@ claude plugins marketplace add security-workflow hanchuntao/security-workflow
 claude plugins install security-workflow@security-workflow
 ```
 
-安装后 `/review` 和 `/deploy` 即可使用。MCP 流程引擎由 Claude Code 自动启动（通过 `.mcp.json` 配置），无需用户手动运行。
+安装后 `/security-workflow:review` 和 `/security-workflow:deploy` 即可使用。MCP 流程引擎由 Claude Code 自动启动（通过 `.mcp.json` 配置），无需用户手动运行。
 
 ### 2. 验证 MCP 流程引擎能启动
 
@@ -62,7 +62,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | python3 -m s
 python3 tests/integration_test.py
 ```
 
-模拟 `/review` → 建工单 → `/deploy` 卡点 → 整改闭环 → 再次卡点的完整链路。测试结束后输出审计轨迹和 PASS/FAIL 判定。
+模拟 `/security-workflow:review` → 建工单 → `/security-workflow:deploy` 卡点 → 整改闭环 → 再次卡点的完整链路。测试结束后输出审计轨迹和 PASS/FAIL 判定。
 
 ### 4. 手动测试各个组件
 
@@ -84,10 +84,10 @@ SECURITY_FIX_APPLY=true bash hooks/auto-fix-security.sh
 
 ## 命令参考
 
-### `/review` — 代码安全评审
+### `/security-workflow:review` — 代码安全评审
 
 ```
-/review scope=project level=all mode=full workflow=true
+/security-workflow:review scope=project level=all mode=full workflow=true
 ```
 
 | 参数 | 可选值 | 默认 | 说明 |
@@ -97,10 +97,10 @@ SECURITY_FIX_APPLY=true bash hooks/auto-fix-security.sh
 | mode | increment / full | full | 增量快扫 / 全量深度 |
 | workflow | true / false | true | 是否创建工单、联动流程引擎 |
 
-### `/deploy` — 上线安全卡点
+### `/security-workflow:deploy` — 上线安全卡点
 
 ```
-/deploy branch=main
+/security-workflow:deploy branch=main
 ```
 
 | 参数 | 可选值 | 默认 | 说明 |
@@ -186,7 +186,7 @@ echo '{"project": "my-backend-api"}' > .security-workflow
 ├── tickets.json                  # MCP engine 工单存储
 ├── audit_log.jsonl               # MCP engine 操作轨迹
 ├── notifications.jsonl           # 通知记录
-└── reports/                      # /review 和 /deploy 自动生成
+└── reports/                      # /security-workflow:review|deploy 自动生成
     ├── {project}-review.md       #   评审报告（发现+策略+待办）
     └── {project}-deploy.md       #   卡点报告（准入+阻断+闭环）
 ```
@@ -199,7 +199,7 @@ echo '{"project": "my-backend-api"}' > .security-workflow
 security-workflow/
 ├── .claude-plugin/plugin.json    # 插件注册
 ├── .mcp.json                     # MCP 引擎连接配置
-├── commands/                     # /review, /deploy
+├── commands/                     # /security-workflow:review|deploy
 ├── agents/                       # security-scanner, quick-fix
 ├── skills/                       # 安全评审规范
 ├── hooks/                        # check-bash.sh, auto-fix-security.sh
@@ -223,7 +223,7 @@ security-workflow/
 ### v1.0.2 (2026-06-25) — 报告自动生成 + 漏洞修复版
 
 **新增:**
-- `security_workflow/report/` — review/deploy 各自独立模板的报告引擎，`/review` `/deploy` 执行完毕后自动落盘 `.security-workflow-data/reports/`
+- `security_workflow/report/` — review/deploy 各自独立模板的报告引擎，`/security-workflow:review` `/security-workflow:deploy` 执行完毕后自动落盘 `.security-workflow-data/reports/`
 - `security_workflow/definition/constants.py` — 共享常量模块，消除 persistence/spi 中硬编码路径重复
 - MCP `generate_report` 工具（第 7 个 tool），支持 `review`/`deploy` 两种报告类型
 - `auto-fix-security.sh` Bash 版本检查（4.0+），macOS 用户收到明确升级指引而非语法错误
@@ -251,7 +251,7 @@ security-workflow/
 
 **新增**：
 - Python MCP 流程引擎完整实现（10 个 .py 文件，6 个 MCP tools）
-- `tests/integration_test.py` — `/review` → `/deploy` 联动集成测试
+- `tests/integration_test.py` — `/security-workflow:review` → `/security-workflow:deploy` 联动集成测试
 - 统一数据目录 `$SECURITY_WORKFLOW_DATA`
 - `.gitignore` 防止运行时数据误提交
 
