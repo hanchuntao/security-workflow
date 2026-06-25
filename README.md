@@ -15,8 +15,8 @@ Claude Code 插件层                     MCP 流程引擎 (Python)
 │   security-scanner       │       │   persistence/  (存储)    │
 │   quick-fix              │       │   timer/        (超时)    │
 │                          │       │   spi/          (扩展)    │
-│  hooks/                  │       └──────────────────────────┘
-│   check-bash.sh (预检)    │
+│  hooks/                  │       │   report/       (报告)    │
+│   check-bash.sh (预检)    │       └──────────────────────────┘
 │   auto-fix-security.sh    │
 └──────────────────────────┘
 ```
@@ -184,7 +184,11 @@ echo '{"project": "my-backend-api"}' > .security-workflow
 │   ├── fix-{timestamp}.log       #   审计日志
 │   └── backups/{timestamp}/      #   修复前备份
 ├── tickets.json                  # MCP engine 工单存储
-└── audit_log.jsonl               # MCP engine 操作轨迹
+├── audit_log.jsonl               # MCP engine 操作轨迹
+├── notifications.jsonl           # 通知记录
+└── reports/                      # /review 和 /deploy 自动生成
+    ├── {project}-review.md       #   评审报告（发现+策略+待办）
+    └── {project}-deploy.md       #   卡点报告（准入+阻断+闭环）
 ```
 
 已加入 `.gitignore`，不会误提交。
@@ -200,21 +204,40 @@ security-workflow/
 ├── skills/                       # 安全评审规范
 ├── hooks/                        # check-bash.sh, auto-fix-security.sh
 ├── security_workflow/            # Python MCP 流程引擎
-│   ├── mcp_server.py             #   入口 (6 tools)
+│   ├── mcp_server.py             #   入口 (7 tools)
 │   ├── core/                     #   工单流转、卡点判定
-│   ├── definition/               #   枚举定义
+│   ├── definition/               #   枚举 + 共享常量
 │   ├── model/                    #   数据模型
 │   ├── persistence/              #   JSON 持久化
 │   ├── timer/                    #   超时计算
-│   └── spi/                      #   通知扩展点
+│   ├── spi/                      #   通知扩展点
+│   └── report/                   #   审计报告自动生成
 ├── tests/
 │   ├── vuln_cases/               # 漏洞测试样本（高/中/低）
-│   ├── regression/               # 回归测试
 │   └── integration_test.py       # 联动集成测试
 └── examples/                     # 各语言安全编码样板
 ```
 
 ## 变更记录
+
+### v1.0.2 (2026-06-25) — 报告自动生成 + 漏洞修复版
+
+**新增:**
+- `security_workflow/report/` — review/deploy 各自独立模板的报告引擎，`/review` `/deploy` 执行完毕后自动落盘 `.security-workflow-data/reports/`
+- `security_workflow/definition/constants.py` — 共享常量模块，消除 persistence/spi 中硬编码路径重复
+- MCP `generate_report` 工具（第 7 个 tool），支持 `review`/`deploy` 两种报告类型
+- `auto-fix-security.sh` Bash 版本检查（4.0+），macOS 用户收到明确升级指引而非语法错误
+
+**已修复 (7 低危 + 3 中危):**
+- 🔧 低危: `persistence/__init__.py` / `spi/__init__.py` 硬编码默认路径 → 共享常量
+- 🔧 低危: `check-bash.sh` TARGET 路径校验 + wc 退出码区分处理
+- 🔧 低危: `auto-fix-security.sh` Perl `-s` 开关安全传参（防变量注入）
+- 🔧 低危: `integration_test.py` `sys.path.insert(0)` → `append`（防模块劫持）
+- 🟡 中危: `mcp_server.py` traceback 不再通过 JSON-RPC error.data 泄露给客户端
+- 🟡 中危: `mcp_server.py` traceback 写入 stderr 受 `SECURITY_WORKFLOW_DEBUG` 环境变量控制
+- 🟡 中危: `core/__init__.py` 配置文件路径增加 `resolve()` 规范化和项目根目录围栏校验
+
+**报告文件命名:** 稳定覆盖（`{project}-{review|deploy}.md`），不产生堆积
 
 ### v1.0.1 (2026-06-25) — smoke test 修复版
 

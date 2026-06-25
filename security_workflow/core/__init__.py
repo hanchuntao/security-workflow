@@ -43,8 +43,14 @@ def detect_project_name() -> str:
         _cached_project = env_project
         return _cached_project
 
-    # 2. 配置文件
-    config_path = Path(".security-workflow")
+    # 2. 配置文件（路径规范化 + 项目根目录围栏校验）
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+    config_path = (PROJECT_ROOT / ".security-workflow").resolve()
+    # 围栏校验：确保解析后的路径在项目根目录内
+    if not str(config_path).startswith(str(PROJECT_ROOT.resolve())):
+        # 路径越界，跳过非法配置
+        _cached_project = Path.cwd().name
+        return _cached_project
     if config_path.exists():
         try:
             config = json.loads(config_path.read_text(encoding="utf-8"))

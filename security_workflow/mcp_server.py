@@ -148,7 +148,9 @@ def handle_request(req: dict[str, Any]) -> dict[str, Any]:
                 "content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False, indent=2, default=str)}]
             })
         except Exception as e:
-            return _jsonrpc_error(req_id, -32000, str(e), traceback.format_exc())
+            sys.stderr.write(f"[security-workflow-engine] Tool dispatch error ({tool_name}): {type(e).__name__}: {e}\n")
+            sys.stderr.flush()
+            return _jsonrpc_error(req_id, -32000, f"Internal error: {type(e).__name__}", "")
 
     # ── unknown ─────────────────────────────────────────────────────────
     return _jsonrpc_error(req_id, -32601, f"Unknown method: {method}")
@@ -236,10 +238,32 @@ def _jsonrpc_error(req_id: Any, code: int, message: str, data: str = "") -> dict
     }
 
 
+# ── 数据目录初始化 ────────────────────────────────────────────────────────────
+
+def _ensure_data_dirs() -> None:
+    """确保 .security-workflow-data 下所有预期子目录都存在。
+
+    即使 auto-fix-security.sh 钩子尚未运行、通知未触发，
+    目录结构也保持完整，方便用户浏览。
+    """
+    from pathlib import Path
+    from .persistence import STORAGE_ROOT
+
+    subdirs = [
+        STORAGE_ROOT / "fix-audit" / "backups",
+        STORAGE_ROOT / "reports",
+    ]
+    for d in subdirs:
+        d.mkdir(parents=True, exist_ok=True)
+
+
 # ── Main entry ─────────────────────────────────────────────────────────────────
 
 def main() -> None:
     """MCP server 主循环 — stdin → process → stdout."""
+    # 启动时确保所有数据子目录存在（即使对应组件尚未运行）
+    _ensure_data_dirs()
+
     # 启动时刷新超时状态
     try:
         from .core import check_and_mark_overdue
@@ -267,8 +291,11 @@ def main() -> None:
             )
             sys.stdout.flush()
         except Exception:
-            tb = traceback.format_exc()
-            sys.stderr.write(f"[security-workflow-engine] {tb}\n")
+            if os.environ.get("SECURITY_WORKFLOW_DEBUG", "").lower() in ("1", "true"):
+                tb = traceback.format_exc()
+                sys.stderr.write(f"[security-workflow-engine] {tb}\n")
+            else:
+                sys.stderr.write("[security-workflow-engine] Error processing request\n")
             sys.stderr.flush()
 
 
