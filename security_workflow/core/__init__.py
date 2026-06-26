@@ -284,10 +284,15 @@ def generate_review_report(
     branch: str = "",
     scan_mode: str = "全量扫描",
     report_type: str = "review",
+    lang: str | None = None,
 ) -> dict[str, Any]:
     """One-stop: collect ticket data → generate report → persist to disk.
 
     Called by /review and /deploy commands at the end of their pipeline.
+
+    Args:
+        lang: Report language (``"en"`` or ``"zh"``). Defaults to
+               ``SECURITY_WORKFLOW_LANG`` env var, falling back to ``"en"``.
 
     Returns:
         {"filepath": str, "ticket_count": int, "finding_count": int, ...}
@@ -318,6 +323,7 @@ def generate_review_report(
         tickets=filtered,
         deploy_gate=gate,
         report_type=report_type,
+        lang=lang,
     )
 
     total_findings = sum(len(t.get("findings", [])) for t in filtered)

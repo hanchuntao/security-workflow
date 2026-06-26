@@ -93,7 +93,7 @@ TOOLS: dict[str, dict[str, Any]] = {
         },
     },
     "generate_report": {
-        "description": "Generate and persist a security review or deployment report. Aggregates tickets, vulnerabilities, and deployment gate data into a Markdown report.",
+        "description": "Generate and persist a security review or deployment report. Supports English (default) and Chinese (set lang=zh or SECURITY_WORKFLOW_LANG=zh for 等保2.0 compliance).",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -101,6 +101,7 @@ TOOLS: dict[str, dict[str, Any]] = {
                 "branch": {"type": "string", "default": "", "description": "Branch name"},
                 "scan_mode": {"type": "string", "default": "full", "description": "Scan mode"},
                 "report_type": {"type": "string", "enum": ["review", "deploy"], "default": "review"},
+                "lang": {"type": "string", "enum": ["en", "zh"], "default": "en", "description": "Report language (en/zh). Also controllable via SECURITY_WORKFLOW_LANG env var."},
             },
         },
     },
@@ -212,6 +213,7 @@ def _dispatch_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
             branch=args.get("branch", ""),
             scan_mode=args.get("scan_mode", "full"),
             report_type=args.get("report_type", "review"),
+            lang=args.get("lang"),
         )
         return {"success": True, "report": result}
 
