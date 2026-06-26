@@ -50,10 +50,10 @@ def main() -> None:
                     "risk_level": "高危",
                     "file_path": "tests/vuln_cases/high_risk_demo.py",
                     "line_no": 17,
-                    "risk_desc": "os.system调用存在命令注入风险",
+                    "risk_desc": "os.system call with command injection risk",
                     "compliance_rule": "OWASP A03:2021 - Injection",
-                    "fix_suggest": "使用subprocess.run并禁用shell=True",
-                    "scan_mode": "全量扫描",
+                    "fix_suggest": "Use subprocess.run with shell=False",
+                    "scan_mode": "full",
                 }
             ],
             "branch": "main",
@@ -68,30 +68,30 @@ def main() -> None:
                     "risk_level": "中危",
                     "file_path": "tests/vuln_cases/mid_risk_demo.js",
                     "line_no": 7,
-                    "risk_desc": "弱加密算法 MD5",
+                    "risk_desc": "Weak encryption algorithm MD5",
                     "compliance_rule": "OWASP A02:2021",
-                    "fix_suggest": "使用SHA256或bcrypt",
-                    "scan_mode": "全量扫描",
+                    "fix_suggest": "Use SHA256 or bcrypt",
+                    "scan_mode": "full",
                 },
                 {
                     "risk_id": "INSECURE-RAND-001",
                     "risk_level": "中危",
                     "file_path": "tests/vuln_cases/mid_risk_demo.js",
                     "line_no": 12,
-                    "risk_desc": "Math.random用于安全场景",
+                    "risk_desc": "Math.random used in security context",
                     "compliance_rule": "OWASP A02:2021",
-                    "fix_suggest": "使用crypto.randomBytes",
-                    "scan_mode": "全量扫描",
+                    "fix_suggest": "Use crypto.randomBytes",
+                    "scan_mode": "full",
                 },
                 {
                     "risk_id": "CORS-WILDCARD-001",
                     "risk_level": "中危",
                     "file_path": "tests/vuln_cases/mid_risk_demo.js",
                     "line_no": 17,
-                    "risk_desc": "CORS origin配置为通配符*",
+                    "risk_desc": "CORS origin configured as wildcard *",
                     "compliance_rule": "OWASP A05:2021",
-                    "fix_suggest": "限制为具体域名",
-                    "scan_mode": "全量扫描",
+                    "fix_suggest": "Restrict to specific domain",
+                    "scan_mode": "full",
                 },
             ],
             "branch": "main",
@@ -106,10 +106,10 @@ def main() -> None:
                     "risk_level": "低危",
                     "file_path": "tests/vuln_cases/low_risk_demo.ts",
                     "line_no": 5,
-                    "risk_desc": "废弃调试console.log",
-                    "compliance_rule": "企业安全编码规范",
-                    "fix_suggest": "删除调试日志",
-                    "scan_mode": "全量扫描",
+                    "risk_desc": "Deprecated debug console.log",
+                    "compliance_rule": "Enterprise Security Coding Standard",
+                    "fix_suggest": "Remove debug log",
+                    "scan_mode": "full",
                 }
             ],
             "branch": "main",
@@ -196,7 +196,7 @@ def main() -> None:
         )
 
     print(f"\n{B}")
-    print("  PASS: /review -> /deploy 联动链路验证完成")
+    print("  PASS: /review -> /deploy full pipeline verified")
     print(B)
 
     # ═══════════════════════════════════════════════════════════

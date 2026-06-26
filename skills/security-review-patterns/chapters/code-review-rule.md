@@ -1,43 +1,44 @@
-# 人工代码安全评审规范（MR审核生产标准）
-## 一、评审适用场景
-代码MR合并、版本迭代、功能上线前人工安全复核，配合自动化扫描完成全维度安全校验。
+# Manual Code Security Review Specification (MR Review Production Standard)
 
-## 二、核心评审检查清单
-### 1. 权限安全校验
-- 接口是否存在身份登录校验、Token有效性校验
-- 数据操作是否校验数据归属权，杜绝水平/垂直越权
-- 管理员接口是否配置角色权限拦截
-- 敏感操作是否二次校验、防伪造
+## I. Review Applicability
+MR merges, version iterations, pre-release manual security review, complementing automated scanning for full-dimensional security validation.
 
-### 2. 数据安全校验
-- 手机号、身份证、银行卡、隐私信息是否脱敏处理
-- 敏感数据是否明文存储、明文传输
-- 日志是否禁止打印敏感隐私数据、密钥、Cookie
-- 数据导出接口是否做权限与频次限制
+## II. Core Review Checklist
+### 1. Authorization Security
+- Do endpoints have login authentication and token validity checks?
+- Do data operations verify data ownership to prevent horizontal/vertical privilege escalation?
+- Do admin endpoints have role-based permission enforcement?
+- Are sensitive operations doubly verified and forgery-resistant?
 
-### 3. 代码安全校验
-- 无用户输入裸拼接、无原生SQL拼接、无命令执行风险
-- 无硬编码密钥、密码、Token、私钥等敏感凭证
-- 无危险函数、不安全加密、不安全随机数使用
-- 废弃危险代码、调试代码已清理
+### 2. Data Security
+- Are phone numbers, ID numbers, bank cards, and privacy data properly masked?
+- Is sensitive data stored or transmitted in plaintext?
+- Do logs forbid printing sensitive privacy data, keys, and cookies?
+- Do data export endpoints have permission and rate limiting?
 
-### 4. 配置安全校验
-- 生产环境关闭调试模式、swagger、dev后台
-- 安全响应头配置完整，CORS配置合规
-- Cookie配置HttpOnly、Secure、SameSite
+### 3. Code Security
+- No raw user input concatenation, no native SQL concatenation, no command execution risks
+- No hardcoded keys, passwords, tokens, private keys, or other sensitive credentials
+- No dangerous functions, insecure cryptography, or insecure random usage
+- Abandoned dangerous code and debug code have been cleaned up
 
-### 5. 业务安全校验
-- 登录、验证码、支付、订单接口防暴力破解、防重放
-- 短信、邮件、推送接口防轰炸、频次限制
-- 验证码过期失效、不可复用
-- 金额、数量、积分等核心字段不可前端可控篡改
+### 4. Configuration Security
+- Production environments have debug mode, swagger, and dev backends disabled
+- Security response headers are complete; CORS is compliant
+- Cookies are configured with HttpOnly, Secure, and SameSite
 
-## 三、评审分级结论
-1. 存在高危漏洞：驳回MR，强制整改后重提评审
-2. 存在中危漏洞：限期整改，备注整改计划后可临时合并
-3. 仅低危问题：自动通过，纳入迭代优化清单
+### 5. Business Logic Security
+- Login, verification code, payment, and order endpoints prevent brute-force and replay attacks
+- SMS, email, and push notification endpoints prevent abuse and have rate limits
+- Verification codes expire and are non-reusable
+- Core fields (amount, quantity, points) are not client-side tamperable
 
-## 四、评审留痕规范
-1. 所有评审意见、整改记录、复核结果永久留存工单
-2. 双人评审高危漏洞，评审人签字备案
-3. 评审结论纳入版本上线审计报告
+## III. Review Classification Verdict
+1. **High-risk vulnerabilities present**: Reject MR; mandatory remediation before re-review
+2. **Medium-risk vulnerabilities present**: Deadline-tracked remediation; may merge temporarily with documented remediation plan
+3. **Low-risk issues only**: Auto-pass; added to iterative optimization backlog
+
+## IV. Review Documentation Standards
+1. All review comments, remediation records, and re-review results are permanently retained in tickets
+2. High-risk vulnerabilities require dual review with signed reviewer records
+3. Review verdicts are included in the version release audit report

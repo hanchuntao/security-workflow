@@ -1,45 +1,50 @@
-# SAST 静态安全扫描规范（企业生产标准）
-## 一、扫描核心原则
-1. 全覆盖原则：覆盖OWASP Top10、等保2.0、企业内部安全编码规范
-2. 零遗漏原则：不忽略注释、测试代码、废弃代码、配置文件漏洞
-3. 精准分级原则：严格按照高危/中危/低危三级标准判定，禁止降级、漏判
-4. 场景差异化原则：区分增量日常扫描、全量评审扫描、上线卡点扫描校验强度
+# SAST Static Security Scan Specification (Enterprise Production Standard)
 
-## 二、风险分级硬性标准
-### 1. 高危漏洞（生产阻断级）
-定义：可被外部攻击者直接利用，造成服务器沦陷、数据泄露、权限越权、业务瘫痪的漏洞，必须100%整改，禁止上线。
-包含：所有注入类、越权未授权、密钥泄露、远程代码执行、敏感数据明文传输存储、高危组件漏洞。
+## I. Core Scanning Principles
+1. **Full coverage**: OWASP Top 10 + enterprise security coding standards
+2. **Zero omission**: Do not skip comments, test code, dead code, or config file vulnerabilities
+3. **Precise classification**: Strictly follow High/Medium/Low 3-tier criteria; no downgrading or missed judgments
+4. **Scenario differentiation**: Distinguish between incremental daily scan, full review scan, and deployment gate scan intensity
 
-### 2. 中危漏洞（限期整改级）
-定义：无法直接远程利用，但存在潜在安全隐患，长期遗留可引发安全事故，需限期迭代整改。
-包含：弱加密、不安全随机数、接口防护缺失、配置不规范、日志脱敏缺陷。
+## II. Rigid Risk Classification Criteria
+### 1. High-Risk Vulnerabilities (Production Blocking)
+**Definition**: Vulnerabilities directly exploitable by external attackers leading to server compromise, data breach, privilege escalation, or business paralysis. Must be 100% remediated. Deployment forbidden.
 
-### 3. 低危漏洞（自动优化级）
-定义：无直接攻击风险，仅编码不规范、残留冗余风险，不影响生产安全，可自动修复优化。
-包含：废弃危险代码、无效安全注释、冗余高危导入、不规范安全编码。
+**Includes**: All injection types, privilege escalation / unauthorized access, key leaks, remote code execution, plaintext sensitive data transmission/storage, high-risk component vulnerabilities.
 
-## 三、扫描校验强制项
-1. 代码层漏洞：注入、XSS、越权、未授权、反序列化、文件操作风险
-2. 凭证层漏洞：硬编码密钥、密码、Token、私钥、敏感凭证泄露
-3. 数据层漏洞：敏感数据明文存储、明文传输、日志泄露隐私数据
-4. 加密层漏洞：弱算法、不安全随机数、固定密钥、无盐哈希
-5. 配置层漏洞：CORS放行、缺失安全头、调试接口对外开放
-6. 依赖层漏洞：存在CVE高危漏洞的第三方组件、框架版本
+### 2. Medium-Risk Vulnerabilities (Deadline-Tracked Remediation)
+**Definition**: Cannot be directly exploited remotely, but pose potential security risks. Long-term accumulation can lead to security incidents. Must be remediated within deadline.
 
-## 四、扫描输出规范
-1. 必须输出完整9项结构化字段，适配修复Agent与流程引擎
-2. 每条漏洞必须明确风险等级、合规依据、可落地修复建议
-3. 区分扫描模式，标记增量/全量扫描场景
-4. 汇总全局风险统计与安全评级
+**Includes**: Weak encryption, insecure random numbers, missing API protection, insecure configuration, log data masking defects.
 
-## 五、扫描豁免规则
-### 生产代码
-无任何漏洞豁免权限，所有检测风险必须按等级完成整改或备案审批。
+### 3. Low-Risk Vulnerabilities (Auto-Optimize)
+**Definition**: No direct attack risk. Coding standards issues and residual redundancy only. Does not affect production security. Can be auto-fixed and optimized.
 
-### 扫描器自检夹具（豁免目录）
-以下目录包含故意构造的漏洞样本，用于验证扫描器/钩子检测能力，扫描时必须跳过：
+**Includes**: Abandoned dangerous code, invalid security comments, redundant high-risk imports, non-standard security coding.
+
+## III. Mandatory Scan Check Items
+1. **Code-layer**: Injection, XSS, privilege escalation, unauthorized access, deserialization, file operation risks
+2. **Credential-layer**: Hardcoded keys, passwords, tokens, private keys, sensitive credential leaks
+3. **Data-layer**: Plaintext sensitive data storage, plaintext transmission, privacy data in logs
+4. **Crypto-layer**: Weak algorithms, insecure random, fixed keys, unsalted hashing
+5. **Config-layer**: CORS wildcard, missing security headers, debug endpoints exposed
+6. **Dependency-layer**: Third-party components and framework versions with known CVE vulnerabilities
+
+## IV. Scan Output Specification
+1. Must output all 9 structured fields, compatible with fix agent and process engine
+2. Each vulnerability must specify risk level, compliance basis, and implementable fix recommendation
+3. Distinguish scan mode, tagging incremental vs. full scan context
+4. Summarize global risk statistics and security rating
+
+## V. Scan Exemption Rules
+### Production Code
+No vulnerability exemption privileges. All detected risks must complete remediation or receive documented approval by risk level.
+
+### Scanner Self-Test Fixtures (Exempt Directories)
+The following directories contain intentionally crafted vulnerability samples to verify scanner/hook detection capability. They must be skipped during scanning:
+
 - `tests/vuln_cases/`
 - `tests/vuln_samples/`
 - `tests/security_test_fixtures/`
 
-> 此规则与 `security-scanner.md` 四-补充、`hooks/check-bash.sh` skip_vuln_dirs() 完全对齐。
+> This rule is 100% aligned with `security-scanner.md` section IV-Addendum and `hooks/check-bash.sh` skip_vuln_dirs().

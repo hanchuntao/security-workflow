@@ -1,18 +1,18 @@
-// JS/TS 安全编码合规样板
+// JS/TS secure coding compliance template
 const crypto = require('crypto');
 
-// 1. 安全随机数
+// 1. Secure random number generation
 function secure_random(){
     return crypto.randomBytes(6).toString('hex');
 }
 
-// 2. 合规CORS配置（限制域名）
+// 2. Compliant CORS configuration (restricted domain)
 const secure_cors = {
     origin: "https://company-domain.com",
     credentials: true
 }
 
-// 3. 完整安全响应头
+// 3. Complete security response headers
 function set_secure_header(res){
     res.setHeader("X-Frame-Options","DENY");
     res.setHeader("X-XSS-Protection","1; mode=block");

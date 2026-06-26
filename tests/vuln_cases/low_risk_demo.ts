@@ -1,12 +1,12 @@
-// 低危漏洞测试样本
-// 预期扫描结果：低危、全自动静默修复、自动闭环
+// Low-risk vulnerability test sample
+// Expected scan result: Low, full-auto silent fix, auto-closed
 
-// 废弃调试代码
+// Deprecated debug code
 console.log("debug test info");
 console.log("temp log");
 
-// 无效安全注释
+// Invalid security comment
 // 临时测试密钥：123456
 
-// 未使用高危导入
+// Unused high-risk import
 import * as unsafeCrypto from 'crypto'

@@ -1,20 +1,21 @@
-# Security Plugin Tests 测试规范
-## 目录用途
-本目录为安全评审插件官方测试用例库，用于：
-1. 验证 scanner 扫描规则准确性（无误判、无漏判）
-2. 验证 quick-fix 分级修复策略有效性
-3. 版本迭代后自动化回归，防止规则退化
-4. 企业验收、规则更新校验标准样本
+# Security Plugin Tests
 
-## 测试分类
-- 高危用例：注入、越权、密钥泄露、RCE、敏感数据泄露
-- 中危用例：弱加密、不安全随机数、缺失安全头、日志泄露
-- 低危用例：废弃代码、无效注释、冗余导入
+## Purpose
+This directory is the official test suite for the security review plugin, used to:
+1. Verify scanner detection rule accuracy (no false positives, no false negatives)
+2. Verify quick-fix tiered remediation strategy effectiveness
+3. Automated regression after version iterations to prevent rule degradation
+4. Enterprise acceptance and rule update validation with standard samples
 
-## 测试执行方式
-1. 手动执行 `/review scope=project mode=full` 校验用例识别结果
-2. 对比扫描分级、修复策略是否匹配官方规范
-3. 迭代更新规则后，全量跑一遍回归用例
+## Test Categories
+- **High-risk** cases: injection, privilege escalation, key leaks, RCE, sensitive data exposure
+- **Medium-risk** cases: weak crypto, insecure random, missing security headers, log leakage
+- **Low-risk** cases: dead code, invalid comments, redundant imports
 
-## 验收标准
-所有测试样本风险分级、修复模式、工单状态流转 100% 符合企业生产规范
+## Test Execution
+1. Manually run `/review scope=project mode=full` to validate case recognition
+2. Compare scan classification and fix strategy against official spec
+3. After rule updates, run the full regression suite
+
+## Acceptance Criteria
+All test samples must align 100% with enterprise production standards for risk classification, fix mode, and ticket state transitions.

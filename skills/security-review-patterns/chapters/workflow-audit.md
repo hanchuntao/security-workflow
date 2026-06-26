@@ -1,26 +1,27 @@
-# 安全工作流审计与流转规范
-## 一、工单状态流转标准
-1. 高危工单：待人工整改 → 双人评审 → 整改复核 → 闭环归档
-2. 中危工单：待修复确认 → 人工整改 → 单人复核 → 限期闭环
-3. 低危工单：待自动修复 → 自动整改 → 自动闭环归档
+# Security Workflow Audit & Transition Specification
 
-## 二、超时管控规则
-1. 高危漏洞工单：72小时未整改自动超时，抄送安全负责人+研发负责人
-2. 中危漏洞工单：5个工作日未整改自动升级预警
-3. 超时工单禁止关联版本上线，强制优先整改
+## I. Ticket State Transition Standards
+1. **High-risk tickets**: Pending manual fix → Dual review → Fix re-review → Closed & archived
+2. **Medium-risk tickets**: Pending fix confirmation → Manual fix → Single review → Closed (deadline-tracked)
+3. **Low-risk tickets**: Pending auto-fix → Auto fixing → Auto closed & archived
 
-## 三、抄送与复核规则
-1. 高危漏洞强制双人安全评审、双向复核
-2. 超时工单、高危新增工单自动抄送团队负责人
-3. 驳回整改工单必须填写明确驳回原因与整改指引
+## II. Timeout Management Rules
+1. High-risk vulnerability tickets: 72 hours without remediation triggers auto-timeout, escalation to security lead + R&D lead
+2. Medium-risk vulnerability tickets: 5 business days without remediation triggers auto-escalation warning
+3. Overdue tickets block associated version deployments; mandatory priority remediation
 
-## 四、审计留存规范
-1. 所有扫描记录、修复Diff、评审意见、流转轨迹永久结构化存储
-2. 支持按项目、分支、版本、时间维度追溯安全风险
-3. 所有记录满足等保2.0安全审计、合规核查要求
+## III. Escalation & Review Rules
+1. High-risk vulnerabilities require mandatory dual security review and bidirectional re-review
+2. Overdue tickets and newly created High-risk tickets auto-escalate to team lead
+3. Rejected remediation tickets must include explicit rejection reasons and remediation guidance
 
-## 五、上线风控规则
-1. 存在未闭环高危工单：直接阻断上线
-2. 存在超时未整改中危工单：阻断上线
-3. 存在未复核漏洞工单：阻断上线
-4. 低危未优化问题：记录台账，不阻断上线
+## IV. Audit Retention Standards
+1. All scan records, fix diffs, review comments, and transition trails are permanently and structurally stored
+2. Security risks can be traced by project, branch, version, and time dimensions
+3. All records satisfy compliance audit and verification requirements
+
+## V. Deployment Risk Control Rules
+1. Unclosed High-risk ticket exists → Directly block deployment
+2. Overdue unresolved Medium-risk ticket exists → Block deployment
+3. Un-reviewed vulnerability ticket exists → Block deployment
+4. Low-risk unoptimized items → Logged in ledger, does not block deployment

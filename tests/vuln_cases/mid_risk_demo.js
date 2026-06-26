@@ -1,23 +1,23 @@
-// 中危漏洞测试样本
-// 预期扫描结果：中危、半自动修复、限期整改
+// Medium-risk vulnerability test sample
+// Expected scan result: Medium, semi-auto fix, deadline-tracked remediation
 
-// 1. 弱加密算法 MD5
+// 1. Weak encryption algorithm MD5
 const crypto = require('crypto');
 function weak_md5(pwd){
     return crypto.createHash('md5').update(pwd).digest('hex');
 }
 
-// 2. 不安全随机数
+// 2. Insecure random number
 function get_random_code(){
     return Math.random().toString().slice(2,8);
 }
 
-// 3. 宽泛CORS配置
+// 3. Overly permissive CORS configuration
 const cors_option = {
     origin: "*"
 }
 
-// 4. 缺失安全响应头
+// 4. Missing security response headers
 function set_res_header(res){
     res.setHeader("Content-Type","text/json");
 }

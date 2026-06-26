@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
   "name": "security-workflow",
-  "description": "企业代码安全评审流水线 — SAST 静态扫描 + 三级分级修复 + 工单流转 + 上线卡点 + 合规审计全闭环",
+  "description": "Enterprise code security review pipeline — SAST static scanning + 3-tier risk remediation + ticket workflow + deployment gate + compliance audit, full closed loop",
   "owner": {
     "name": "Chuntao Han",
     "url": "https://github.com/hanchuntao"
@@ -13,7 +13,7 @@
         "source": "github",
         "repo": "hanchuntao/security-workflow"
       },
-      "description": "企业代码安全评审插件 — /review 安全评审 + /deploy 上线卡点 + MCP 流程引擎",
+      "description": "Enterprise code security review plugin — /review security review + /deploy deployment gate + MCP process engine",
       "homepage": "https://github.com/hanchuntao/security-workflow",
       "license": "MIT",
       "keywords": [
