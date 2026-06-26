@@ -5,77 +5,78 @@ allowed-tools: "Read, Grep, Glob, Bash(git:*), Bash(git diff:*), Bash(git log:*)
 ---
 
 # /deploy
-## 命令概述
-企业生产级上线发布安全卡点核心指令，是研发流程**最后一道安全防线**。联动 `/review` 评审规范、security-scanner扫描引擎、quick-fix修复规则、security-workflow流程引擎，强制校验项目所有安全风险，拦截未整改漏洞、未完成评审的代码上线，杜绝违规发布，保障生产环境安全合规。
+## Overview
 
-本命令为上线准入唯一校验入口，所有分支、版本上线必须经过本指令卡点校验，无豁免、无跳过权限。
+Enterprise production deployment security gate — the **last line of defense** in the R&D pipeline. Orchestrates the `/review` standard, security-scanner engine, quick-fix remediation rules, and security-workflow process engine to enforce a mandatory security compliance check. Blocks deployment of unpatched vulnerabilities and unreviewed code. No bypass, no exemption.
 
-## 核心能力（生产强制卡点）
-1. 上线前全量深度安全扫描，复刻正式生产评审标准，杜绝增量扫描漏判风险
-2. 严格校验高/中/低危漏洞整改状态，分级拦截违规上线行为
-3. 校验安全评审工单闭环状态，核查双人评审、整改复核完整性
-4. 联动流程引擎更新上线工单状态，记录发布审计日志
-5. 输出上线合规判定结论，生成可归档的上线安全报告，满足等保审计要求
+This command is the sole admission checkpoint for production release. Every branch and version must pass this gate before deployment.
 
-## 命令参数
-| 参数名 | 可选值 | 默认值 | 说明 |
-|-------|--------|--------|------|
-| branch | 自定义分支名 | main | 待上线代码分支名称，精准校验对应分支代码 |
-| skip-review | true / false | false | 是否跳过安全评审校验（生产环境强制锁定false，禁止跳过） |
-| force | true / false | false | 强制上线（仅紧急故障修复场景，需安全负责人审批备案） |
-| workflow | true / false | true | 联动流程引擎更新上线工单、留存发布轨迹 |
+## Core Capabilities (Mandatory Gate)
+1. Pre-deployment full-scope deep security scan, replicating formal production review standards — no incremental shortcuts
+2. Strict verification of High/Medium/Low vulnerability fix status with tiered blocking rules
+3. Validate security review ticket closure status — dual review and fix re-review completeness
+4. Process engine integration to update deployment ticket state and record release audit trail
+5. Produce a compliance admission verdict and archivable deployment security report for audit requirements
 
-## 标准使用示例
+## Parameters
+| Parameter | Values | Default | Description |
+|-----------|--------|---------|-------------|
+| branch | branch name | main | Target branch for deployment; gate checks code on this branch precisely |
+| skip-review | true / false | false | Whether to skip security review validation (**permanently locked to false in production**) |
+| force | true / false | false | Force deployment — emergency hotfix only; requires security lead approval and post-launch review within 24h |
+| workflow | true / false | true | Integrate with process engine to update ticket state and retain release audit trail |
+
+## Usage Examples
 ```
-# 生产环境正式上线校验（标准必用）
+# Standard production deployment gate (mandatory)
 /deploy branch=main skip-review=false force=false workflow=true
 
-# 测试环境上线校验（合规校验一致，无强制拦截）
+# Test environment deployment (same compliance checks, no forced blocking)
 /deploy branch=test skip-review=false force=false workflow=true
 
-# 紧急故障修复强制上线（需事后安全备案复盘）
+# Emergency hotfix forced deployment (requires post-launch security review)
 /deploy branch=hotfix skip-review=false force=true workflow=true
 ```
 
-## 完整执行链路（100%对齐整套安全流水线）
-### 步骤1：上线前置初始化校验
-锁定上线分支代码，强制启用 **full全量扫描模式、all全风险等级校验**，禁止使用增量扫描替代上线卡点校验，对齐`/review`生产上线评审标准。
+## Execution Pipeline (100% aligned with full security pipeline)
+### Step 1: Pre-Deployment Initialization Check
+Lock the target branch code. Force-enable **full scan mode + all risk levels**. Incremental scans are not accepted as a substitute for deployment gate validation. Aligned with `/review` production release standards.
 
-### 步骤2：触发全维度安全扫描
-调用security-scanner执行深度扫描，沿用统一漏洞分级、结构化输出字段，全覆盖OWASP Top10、企业安全规范、等保校验项，精准识别所有遗留安全漏洞。
+### Step 2: Trigger Full-Scope Security Scan
+Invoke security-scanner to perform deep scan using unified vulnerability classification and structured output fields. Covers OWASP Top 10, enterprise security standards, and compliance check items. Precisely identifies all residual security vulnerabilities.
 
-### 步骤3：漏洞整改状态强制校验
-联动quick-fix分级修复规范，逐项校验漏洞闭环状态，执行刚性拦截规则：
-1. 高危漏洞：存在任意未闭环高危漏洞，直接阻断上线，强制要求人工整改、双人安全评审通过后方可放行
-2. 中危漏洞：未完成整改、未确认修复的中危漏洞，阻断上线，限期完成整改复核
-3. 低危漏洞：未自动闭环的低危优化项，记录风险台账，不阻断上线，但强制纳入后续迭代整改清单
+### Step 3: Vulnerability Fix Status Enforcement
+Cross-reference quick-fix tiered remediation rules. Validate each vulnerability's closure status with rigid blocking rules:
+1. **High**: Any unclosed High vulnerability → immediate deployment block. Requires mandatory manual fix + dual security review before release.
+2. **Medium**: Incomplete or unconfirmed Medium fixes → deployment block. Must complete remediation and review within deadline.
+3. **Low**: Unclosed Low optimization items → recorded in risk ledger; does not block deployment, but mandatory inclusion in next iteration fix list.
 
-### 步骤4：安全工单闭环校验
-联动security-workflow流程引擎，核查当前分支所有安全评审工单状态：
-1. 校验所有高危漏洞工单是否完成「整改-复核-闭环」全流程
-2. 校验中危漏洞工单是否在规定整改周期内、无超时未处理工单
-3. 校验是否存在待评审、待整改、待复核的未完结安全工单
-4. 超时未整改、未评审的工单自动触发流程抄送，同步预警安全负责人
+### Step 4: Security Ticket Closure Verification
+Integrate with security-workflow process engine to verify all security review tickets on the current branch:
+1. Verify all High-vulnerability tickets have completed the "Fix → Review → Closure" full lifecycle
+2. Verify Medium-vulnerability tickets are within remediation deadlines with no overdue items
+3. Check for any pending review, pending fix, or pending re-review tickets
+4. Overdue or unreviewed tickets auto-trigger process escalation with security lead notification
 
-### 步骤5：自动生成上线安全报告并落盘
-调用 `generate_review_report(report_type="deploy")` 根据扫描结果、漏洞整改状态、工单闭环状态，自动生成结构化 Markdown 报告并保存至 `.security-workflow-data/reports/{project}-deploy-{timestamp}.md`。报告包含六大部分：全局风险汇总、安全工单状态、单条漏洞详情、上线准入判定（含阻断原因）、整改要求、审计合规声明。同步留存全链路审计日志，更新流程工单发布状态。
+### Step 5: Generate & Persist Deployment Security Report
+`generate_review_report(report_type="deploy")` produces a structured Markdown report based on scan results, vulnerability fix status, and ticket closure state. Saved to `.security-workflow-data/reports/{project}-deploy-{timestamp}.md`. The report includes 6 sections: global risk summary, ticket status, per-vulnerability details, deployment admission decision (with blocking reasons), remediation requirements, and audit compliance declaration. Full-chain audit logs are retained and process ticket state is updated.
 
-## 生产硬性拦截规则（无豁免权限）
-1. 生产分支检测到任意未修复高危漏洞，100%强制阻断上线，禁止任何绕过操作
-2. 存在未评审、未复核的高危漏洞工单，直接拦截发布流程
-3. skip-review参数生产环境永久锁定false，人工修改无效，杜绝违规跳过校验
-4. force强制上线仅适用于生产紧急故障修复，上线后24小时内必须完成安全复盘、漏洞整改备案
-5. 中危漏洞批量堆积、超期未整改，自动升级为上线拦截级别，禁止版本迭代发布
+## Hard Blocking Rules (No Exemption)
+1. Any unpatched High-risk vulnerability on production branch → **100% block deployment**, no bypass
+2. Any High-vulnerability ticket not yet reviewed or re-reviewed → directly block the release pipeline
+3. `skip-review` parameter is permanently locked to `false` in production; manual override has no effect
+4. `force` deployment is only allowed for production emergency hotfixes; a mandatory security retrospective and vulnerability fix filing must be completed within 24 hours post-launch
+5. Accumulated or long-overdue Medium vulnerabilities auto-escalate to deployment-blocking level; version iteration release is forbidden
 
-## 输出内容规范
-1. 上线分支基础信息：分支名称、扫描模式、校验时间、合规判定结果
-2. 全量漏洞风险汇总：未闭环高危/中危/低危漏洞数量、风险明细
-3. 工单状态校验结果：未完结工单清单、超时工单预警、待操作事项
-4. 上线准入结论：允许上线 / 阻断上线 明确判定
-5. 整改整改建议：未闭环漏洞精准修复方案、工单处理指引
-6. 审计归档日志：完整上线安全校验轨迹，可追溯、可复盘、可合规核查
+## Output Specification
+1. Branch info: branch name, scan mode, check timestamp, compliance verdict
+2. Vulnerability risk summary: counts of unclosed High/Medium/Low vulnerabilities, risk breakdown
+3. Ticket status verification: list of open tickets, overdue alerts, pending actions
+4. Deployment admission conclusion: explicit **ALLOWED** / **BLOCKED** verdict
+5. Remediation guidance: precise fix plans for unclosed vulnerabilities, ticket handling instructions
+6. Audit archive: complete deployment security check trail — traceable, reviewable, compliance-verifiable
 
-## 全流水线联动依赖
-1. 上游依赖：/review 代码评审命令、security-scanner安全扫描Agent、quick-fix漏洞修复Agent
-2. 核心依赖：security-workflow流程引擎（工单校验、状态更新、超时预警、审计留存）
-3. 前置依赖：文件保存、Git提交安全钩子校验结果，确保全程无漏洞漏判
+## Pipeline Dependencies
+1. **Upstream**: `/review` command, security-scanner agent, quick-fix agent
+2. **Core**: security-workflow process engine (ticket verification, state updates, timeout alerts, audit retention)
+3. **Pre-requisite**: File-save and Git pre-commit security hook results to ensure zero oversight

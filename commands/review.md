@@ -5,75 +5,77 @@ allowed-tools: "Read, Grep, Glob, Bash(git diff:*), Bash(git log:*)"
 ---
 
 # /review
-## 命令概述
-企业生产级代码安全评审核心指令，联动 security-scanner 扫描智能体、quick-fix 修复智能体、security-workflow 流程引擎，实现「代码扫描-风险分级-智能修复-工单创建-流程流转-安全卡点」全自动化闭环。
-适配日常开发增量校验、MR代码评审、版本上线前全量安全审计，是整套安全流水线唯一核心评审入口。
+## Overview
 
-## 核心能力（生产闭环）
-1. 全量/增量差异化安全扫描，严格遵循三级风险分级规范
-2. 自动匹配对应漏洞修复策略（高危人工、中危半自动、低危全自动）
-3. 自动创建标准化安全评审工单，初始化对应流转状态
-4. 联动流程引擎实现超时提醒、抄送、驳回、上线拦截卡点
-5. 输出结构化审计报告，满足等保合规、企业安全审计要求
+Enterprise-grade code security review command. Orchestrates the security-scanner agent, quick-fix agent, and security-workflow process engine to deliver a fully automated closed loop: **scan → risk classification → fix → ticket creation → workflow tracking → security gate**.
 
-## 命令参数
-| 参数名 | 可选值 | 默认值 | 说明 |
-|-------|--------|--------|------|
-| scope | file / project | project | 扫描范围：单文件扫描 / 全项目扫描 |
-| level | low / mid / high / all | all | 扫描校验等级，限定最低检测风险等级 |
-| workflow | true / false | true | 是否自动创建安全评审工单、联动流程引擎流转 |
-| mode | increment / full | full | 扫描模式：increment增量变更扫描 / full全量深度扫描 |
+Covers daily incremental checks, MR code reviews, and pre-release full-scope security audits. This is the sole entry point for the entire security pipeline.
 
-## 标准使用示例
+## Core Capabilities (Production Closed Loop)
+1. Full/incremental security scan with strict 3-tier risk classification (High/Medium/Low)
+2. Auto-matching fix strategy per vulnerability level (Manual for High, Semi-auto for Medium, Full-auto for Low)
+3. Auto-created standardized security review tickets with appropriate initial workflow states
+4. Process engine integration for timeout alerts, escalations, rejections, and deployment blocks
+5. Structured audit reports meeting compliance and enterprise security audit requirements
+
+## Parameters
+| Parameter | Values | Default | Description |
+|-----------|--------|---------|-------------|
+| scope | file / project | project | Scan scope: single file or entire project |
+| level | low / mid / high / all | all | Minimum risk level to report |
+| mode | increment / full | full | `increment` = changed files only (fast); `full` = entire codebase (thorough) |
+| workflow | true / false | true | Whether to create tickets and integrate with the process engine |
+
+## Usage Examples
 ```
-# 全项目全等级深度安全评审（生产上线必备）
+# Full-scope deep security review (required for production release)
 /review scope=project level=all mode=full workflow=true
 
-# 单文件增量评审（日常开发调试）
+# Single-file incremental review (daily development)
 /review scope=file level=all mode=increment workflow=true
 
-# 高危漏洞专项评审（紧急卡点校验）
+# High-risk focused review (urgent gate check)
 /review scope=project level=high mode=full workflow=true
 ```
 
-## 完整执行链路（100%对齐双Agent规范）
-### 步骤1：初始化扫描规则
-根据传入参数确定扫描范围、模式、风险等级阈值，调用 security-scanner 执行标准化扫描，严格匹配统一漏洞分级清单。
+## Execution Pipeline (100% aligned with dual-agent spec)
+### Step 1: Initialize Scan Rules
+Determine scan scope, mode, and risk threshold from parameters. Invoke security-scanner with standardized scan rules matching the unified vulnerability classification.
 
-### 步骤2：结构化漏洞扫描输出
-Scanner 输出固定9项标准化字段数据，包含risk_id、risk_level、file_path、line_no、risk_desc、compliance_rule、fix_suggest、scan_mode、workflow_status，为修复和工单流转提供唯一数据源。
+### Step 2: Structured Vulnerability Output
+Scanner produces 9 fixed structured fields: `risk_id`, `risk_level`, `file_path`, `line_no`, `risk_desc`, `compliance_rule`, `fix_suggest`, `scan_mode`, `workflow_status`. These serve as the single source of truth for remediation and ticket workflow.
 
-### 步骤3：自动匹配分级修复策略
-联动 quick-fix执行差异化修复逻辑，严格对齐全局统一规则：
-1. 高危漏洞：禁止自动修复，仅生成精准整改方案，工单初始状态「待人工整改+双人评审+禁止上线」
-2. 中危漏洞：生成半自动修复代码，需人工确认生效，工单初始状态「待修复确认+限期整改」
-3.低危漏洞：全自动静默修复，自动消除风险，工单自动闭环留存审计
+### Step 3: Match Tiered Fix Strategy
+Invoke quick-fix with differentiated remediation aligned to global rules:
+1. **High**: Forbidden auto-fix. Generate precise remediation plan only. Ticket state: "Pending manual fix + dual review + deploy blocked"
+2. **Medium**: Generate semi-auto fix code, requires human confirmation. Ticket state: "Pending fix confirmation + deadline tracked"
+3. **Low**: Fully automatic silent fix. Ticket auto-closed with audit trail retained.
 
-### 步骤4：流程引擎工单联动
-workflow=true 时自动触发流程引擎能力：
-1. 按漏洞等级初始化对应工单状态
-2. 高危漏洞自动阻断MR合并、版本上线
-3. 中危漏洞启动限期计时，超时自动抄送安全负责人
-4. 同步留存扫描、修复、整改全链路日志，用于合规审计
+### Step 4: Process Engine Ticket Integration
+When `workflow=true`, the process engine is automatically triggered:
+1. Initialize ticket states per vulnerability level
+2. High-risk flaws auto-block MR merge and release
+3. Medium-risk flaws start deadline timers; overdue tickets auto-escalate to security lead
+4. Full-chain logs (scan → fix → review) preserved for compliance audit
 
-### 步骤5：自动生成评审报告并落盘
-调用 `generate_review_report()` 汇总全局风险统计、单条漏洞详情、修复方案、工单流转状态、安全评级，自动生成结构化 Markdown 报告并保存至 `.security-workflow-data/reports/{project}-review-{timestamp}.md`。报告包含六大部分：全局风险汇总、安全工单状态、单条漏洞详情、上线准入判定、整改要求、审计合规声明。
+### Step 5: Generate & Persist Review Report
+`generate_review_report()` aggregates global risk stats, per-vulnerability details, fix plans, ticket states, and security rating into a structured Markdown report saved at `.security-workflow-data/reports/{project}-review-{timestamp}.md`. The report includes 6 sections: global risk summary, ticket status, per-vulnerability details, deployment admission decision, remediation requirements, and audit compliance declaration.
 
-## 生产强制约束
-1. 全量上线评审必须使用 `mode=full level=all`，禁止增量扫描替代上线卡点校验
-2. 检测出高危漏洞时，强制阻断后续发布流程，不支持跳过豁免
-3. 所有扫描、修复、工单变更记录永久结构化留存，不可删除篡改
-4. 严格遵循双Agent分级规范，禁止私自降级漏洞风险、跳过整改流程
-5. 中危漏洞超期未整改自动升级风险，触发二次评审提醒
+## Production Constraints
+1. Release reviews MUST use `mode=full level=all`; incremental scans cannot substitute deployment gate checks
+2. Detection of any High-risk vulnerability forcibly blocks the release pipeline — no skip or bypass
+3. All scan, fix, and ticket change records are permanently and structurally preserved; no deletion or tampering
+4. Strictly follow dual-agent classification rules; no unauthorized downgrading of vulnerability severity or skipping remediation
+5. Overdue Medium-risk vulnerabilities auto-escalate and trigger a secondary review alert
 
-## 输出内容规范
-1. 全局安全风险汇总：高危/中危/低危漏洞数量、项目整体安全评级
-2. 单条漏洞结构化详情：完整对齐Scanner输出字段
-3. 分级修复结果：修复模式、修复前后代码对比、风险消除说明
-4. 安全工单状态：当前流转节点、待操作事项、超时时间
-5. 合规审计结论：本次评审合规性判定、整改要求、上线准入结论
+## Output Specification
+1. Global risk summary: High/Medium/Low vulnerability counts, overall project security rating
+2. Per-vulnerability structured details: fully aligned with Scanner output fields
+3. Tiered fix results: fix mode, before/after code diff, risk elimination notes
+4. Security ticket status: current workflow state, pending actions, deadline
+5. Compliance audit conclusion: compliance verdict, remediation requirements, deployment admission decision
 
-## 联动依赖说明
-1. 依赖 Agent：security-scanner（扫描数据源）、quick-fix（漏洞整改）
-2. 依赖引擎：security-workflow 流程引擎（工单流转、卡点、超时提醒）
-3. 依赖钩子：文件保存、Git提交前置安全校验能力
+## Dependencies
+1. **Agents**: security-scanner (scan data source), quick-fix (vulnerability remediation)
+2. **Engine**: security-workflow process engine (ticket workflow, gate, timeout alerts)
+3. **Hooks**: file-save and pre-commit security pre-check capabilities

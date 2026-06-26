@@ -1,308 +1,308 @@
-# Security Workflow — 企业代码安全评审插件
+# Security Workflow — Enterprise Code Security Review Plugin
 
-Claude Code 插件 + Python MCP 流程引擎，实现 **扫描 → 分级修复 → 工单流转 → 超时审计 → 上线卡点** 全闭环。
+Claude Code plugin + Python MCP process engine delivering a full closed loop: **Scan → Tiered Fix → Ticket Workflow → Timeout Audit → Deployment Gate**.
 
-## 整体架构
+## Architecture
 
 ```
-Claude Code 插件层                          MCP 流程引擎 (Python)
+Claude Code Plugin Layer                     MCP Process Engine (Python)
 ┌────────────────────────────────┐     ┌──────────────────────────┐
 │  commands/                     │     │  security_workflow/      │
-│   /security-workflow:review    │─RPC─│   mcp_server.py (入口)    │
-│   /security-workflow:deploy    │     │   core/         (引擎)    │
-│                                │     │   definition/   (枚举)    │
-│  agents/                       │     │   model/        (数据)    │
-│   security-scanner             │     │   persistence/  (存储)    │
-│   quick-fix                    │     │   timer/        (超时)    │
-│                                │     │   spi/          (扩展)    │
-│  hooks/                        │     │   report/       (报告)    │
-│   check-bash.sh (预检)          │     └──────────────────────────┘
-│   auto-fix-security.sh          │
+│   /security-workflow:review    │─RPC─│   mcp_server.py (entry)   │
+│   /security-workflow:deploy    │     │   core/         (engine)  │
+│                                │     │   definition/   (enums)   │
+│  agents/                       │     │   model/        (data)    │
+│   security-scanner             │     │   persistence/  (storage) │
+│   quick-fix                    │     │   timer/        (timeout) │
+│                                │     │   spi/          (extend)  │
+│  hooks/                        │     │   report/       (reports) │
+│   check-bash.sh (pre-check)    │     └──────────────────────────┘
+│   auto-fix-security.sh         │
 └────────────────────────────────┘
 ```
 
-## 快速开始
+## Quick Start
 
-### 前置条件
+### Prerequisites
 
-| 条件 | 必需？ | 说明 |
-|------|--------|------|
-| Python 3.10+ | 🟡 可选 | MCP 流程引擎（工单流转、上线卡点）。不装也能用扫描功能 |
-| Bash 4.0+ | ✅ 必需 | 钩子脚本运行环境。macOS 自带 3.2 版本过低，需 `brew install bash`；Linux 一般已内置 5.x；Windows 需 Git Bash 或 WSL |
-| Git | ✅ 必需 | 脚本优先用 `git ls-files` 获取追踪文件（自动尊重 `.gitignore`） |
-| Perl 5+ | ✅ 必需 | `auto-fix-security.sh` 用于跨平台安全删除行。macOS/Linux 已内置；Windows 随 Git Bash 内置 |
-| GNU grep | 🟡 推荐 | macOS 自带 BSD grep 不支持 `\b` 词边界，所有扫描模式会静默失效。安装：`brew install grep`（之后系统用 `ggrep` 命令） |
-| Claude Code | ✅ 必需 | 插件宿主 |
+| Requirement | Required? | Notes |
+|-------------|-----------|-------|
+| Python 3.10+ | 🟡 Optional | MCP process engine (ticket workflow, deployment gate). Scanning works without it. |
+| Bash 4.0+ | ✅ Required | Hook script runtime. macOS ships 3.2 — upgrade with `brew install bash`; Linux has 5.x built-in; Windows needs Git Bash or WSL. |
+| Git | ✅ Required | Scripts prefer `git ls-files` for tracked files (auto-respects `.gitignore`). |
+| Perl 5+ | ✅ Required | `auto-fix-security.sh` uses it for cross-platform safe line deletion. macOS/Linux built-in; Windows included with Git Bash. |
+| GNU grep | 🟡 Recommended | macOS BSD grep lacks `\b` word boundary support — all scan patterns silently fail. Install: `brew install grep` (then use `ggrep`). |
+| Claude Code | ✅ Required | Plugin host. |
 
-Python 端零依赖 — 只用标准库（`json`, `datetime`, `pathlib`, `threading`, `enum`），无需 `pip install`。
+Python side has zero dependencies — standard library only (`json`, `datetime`, `pathlib`, `threading`, `enum`), no `pip install` needed.
 
-### 1. 安装插件
+### 1. Install the Plugin
 
 ```bash
 claude plugins marketplace add security-workflow hanchuntao/security-workflow
 claude plugins install security-workflow@security-workflow
 ```
 
-安装后 `/security-workflow:review` 和 `/security-workflow:deploy` 即可使用。MCP 流程引擎由 Claude Code 自动启动（通过 `.mcp.json` 配置），无需用户手动运行。
+After installation, `/security-workflow:review` and `/security-workflow:deploy` are ready. The MCP process engine is auto-started by Claude Code (via `.mcp.json` config) — no manual steps required.
 
-### 2. 验证 MCP 流程引擎能启动
+### 2. Verify the MCP Engine
 
 ```bash
 cd security-workflow
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' | python3 -m security_workflow.mcp_server
 ```
 
-预期输出包含 `"serverInfo":{"name":"security-workflow-mcp-engine","version":"1.0.1"}`。
+Expected output contains `"serverInfo":{"name":"security-workflow-mcp-engine","version":"1.0.1"}`.
 
-如果输出乱码或报错，检查 Python 版本 ≥ 3.10，且 `security_workflow/` 目录在当前路径下。
+If output is garbled or errors, check Python ≥ 3.10 and that `security_workflow/` is in the current working directory.
 
-### 3. 跑集成测试
+### 3. Run Integration Tests
 
 ```bash
 python3 tests/integration_test.py
 ```
 
-模拟 `/security-workflow:review` → 建工单 → `/security-workflow:deploy` 卡点 → 整改闭环 → 再次卡点的完整链路。测试结束后输出审计轨迹和 PASS/FAIL 判定。
+Simulates the full pipeline: `/security-workflow:review` → ticket creation → `/security-workflow:deploy` gate → remediation loop → re-gate. Outputs audit trail and PASS/FAIL verdict.
 
-### 4. 手动测试各个组件
+### 4. Manual Component Testing
 
 ```bash
-# 安全预检钩子（单文件）
-bash hooks/check-bash.sh tests/vuln_cases/high_risk_demo.py   # 预期: 高危阻断 exit 2
-bash hooks/check-bash.sh tests/vuln_cases/mid_risk_demo.js    # 预期: 中危警告 exit 1
-bash hooks/check-bash.sh tests/vuln_cases/low_risk_demo.ts    # 预期: 通过 exit 0
+# Security pre-check hook (single file)
+bash hooks/check-bash.sh tests/vuln_cases/high_risk_demo.py   # Expected: High-Risk block exit 2
+bash hooks/check-bash.sh tests/vuln_cases/mid_risk_demo.js    # Expected: Medium-Risk warn exit 1
+bash hooks/check-bash.sh tests/vuln_cases/low_risk_demo.ts    # Expected: Pass exit 0
 
-# 安全预检钩子（全项目）
-bash hooks/check-bash.sh                                      # 扫描整个仓库
+# Security pre-check hook (full project)
+bash hooks/check-bash.sh                                      # Scan entire repo
 
-# 低危自动修复（干跑 — 默认安全）
+# Low-risk auto-fix (dry run — safe default)
 bash hooks/auto-fix-security.sh
 
-# 低危自动修复（实际应用）
+# Low-risk auto-fix (apply mode)
 SECURITY_FIX_APPLY=true bash hooks/auto-fix-security.sh
 ```
 
-## 命令参考
+## Command Reference
 
-本插件提供两个核心命令，分别对应研发流程中的**两个不同阶段**：
+This plugin provides two core commands corresponding to **two distinct stages** of the R&D pipeline:
 
 ```
-写代码 → 保存 → git commit → /review（代码评审，发现问题）
-                                   │
-                                   ▼
-                          quick-fix 修复 + 工单闭环
-                                   │
-                                   ▼
-                          /deploy（上线卡点，验证放行）→ 🚀 上线
+Code → Save → git commit → /review (Code Review — discover issues)
+                               │
+                               ▼
+                      quick-fix remediation + ticket closure
+                               │
+                               ▼
+                      /deploy (Deploy Gate — verify & release) → 🚀 Production
 ```
 
-> **打个比方**：`review` 是飞机制造阶段的质检——检查每个零件有没有裂纹，发现问题的送去维修，修好签字归档。`deploy` 是起飞前塔台的放行许可——飞机推到跑道上了，塔台做最后一道强制检查：起落架修好了没？维修工单全部签字没？有一项不合格就直接拒飞，没有人情可讲。
+> **Analogy**: `review` is the factory QA inspection — checks every part for cracks, sends flawed ones to repair, signs off when fixed, files the paperwork. `deploy` is the control tower's takeoff clearance — the plane is on the runway, the tower runs the final mandatory checklist: landing gear fixed? all maintenance tickets signed? One failure means grounding — no exceptions.
 
 ---
 
-### `/security-workflow:review` — 代码安全评审（发现问题阶段）
+### `/security-workflow:review` — Code Security Review (Discovery Stage)
 
-在**开发阶段**对代码进行静态安全扫描，检测 OWASP Top10、企业安全规范、等保合规项等各类漏洞。发现问题后联动 quick-fix 引擎提出修复方案、创建安全工单流转，全程留痕可追溯。
+Performs static code security scanning during the **development phase**, detecting OWASP Top 10, enterprise security standards, and compliance items. On finding issues, orchestrates the quick-fix engine for remediation plans, creates security tickets, and tracks the full workflow with a complete audit trail.
 
-**触发时机**：文件保存后、Git 提交前、MR/PR 评审时
+**Trigger timing**: After file save, before Git commit, during MR/PR review
 
 ```
 /security-workflow:review scope=project level=all mode=full workflow=true
 ```
 
-| 参数 | 可选值 | 默认 | 说明 |
-|------|--------|------|------|
-| scope | file / project | project | `project` = 全项目深度扫描；`file` = 仅扫描当前文件 |
-| level | low / mid / high / all | all | 最低检测风险等级。`low`=只报≥低危；`high`=只报高危 |
-| mode | increment / full | full | `increment`=仅扫描变更部分（快）；`full`=全量深度（准） |
-| workflow | true / false | true | `true`=扫描后自动创建工单、联动 MCP 流程引擎追踪闭环 |
+| Parameter | Values | Default | Description |
+|-----------|--------|---------|-------------|
+| scope | file / project | project | `project` = full deep scan; `file` = current file only |
+| level | low / mid / high / all | all | Minimum risk level to report. `low` = ≥Low; `high` = High only |
+| mode | increment / full | full | `increment` = changed files only (fast); `full` = entire codebase (thorough) |
+| workflow | true / false | true | `true` = auto-create tickets and integrate with MCP process engine for closed-loop tracking |
 
 ---
 
-### `/security-workflow:deploy` — 上线安全卡点（验证放行阶段）
+### `/security-workflow:deploy` — Production Deployment Gate (Verification Stage)
 
-在**上线发布前**执行的最后一道强制安全校验，是研发流程的最终安全防线。它不是又一次扫描，而是**校验是否所有已知漏洞都已整改、所有安全工单都已闭环**——任何未整改的高危/中危漏洞直接阻断上线，无豁免权限。
+The **final mandatory security check** executed before production release — the last line of defense in the R&D pipeline. It is not another scan, but rather **verifies that all known vulnerabilities have been remediated and all security tickets are closed** — any unpatched High/Medium vulnerability directly blocks deployment with zero exemption.
 
-**触发时机**：正式发布前、CICD 流水线卡点
+**Trigger timing**: Before formal release, CI/CD pipeline gate
 
 ```
 /security-workflow:deploy branch=main
 ```
 
-| 参数 | 可选值 | 默认 | 说明 |
-|------|--------|------|------|
-| branch | 分支名 | main | 待上线代码分支，精准校验该分支的漏洞整改状态 |
-| skip-review | false | false | **生产环境永久锁定 false**，禁止跳过安全评审校验 |
-| force | true / false | false | `true`=紧急故障修复强制上线（需安全负责人审批，事后24h内必须复盘备案） |
-| workflow | true / false | true | `true`=联动流程引擎更新工单发布状态、留存审计轨迹 |
+| Parameter | Values | Default | Description |
+|-----------|--------|---------|-------------|
+| branch | branch name | main | Target deployment branch; precisely validates fix status on that branch |
+| skip-review | false | false | **Permanently locked to false in production.** Cannot skip security review. |
+| force | true / false | false | `true` = emergency hotfix forced deploy (requires security lead approval; mandatory retrospective within 24h) |
+| workflow | true / false | true | `true` = integrate with process engine to update ticket state and retain audit trail |
 
-**硬性拦截规则（无豁免）**：
-- 🔴 生产分支存在**任意未修复高危漏洞** → 100% 阻断上线
-- 🟡 中危漏洞**批量堆积或超期未整改** → 自动升级为阻断级
-- 📋 存在**未闭环安全工单**（待评审/待整改/待复核） → 拦截发布
-- ⏰ 超时未处理工单 → 自动抄送预警安全负责人
+**Hard Blocking Rules (No Exemption)**:
+- 🔴 Production branch has **any unpatched High-risk vulnerability** → 100% block deployment
+- 🟡 Medium vulnerabilities **accumulated in bulk or long-overdue without remediation** → auto-escalated to blocking level
+- 📋 **Open security tickets** exist (pending review / pending fix / pending re-review) → block release
+- ⏰ Overdue, unprocessed tickets → auto-escalate with security lead notification
 
-**与 `review` 的关系**：`deploy` 依赖 `review` 阶段产生的漏洞数据和工单状态。没有 `review` 的扫描发现，`deploy` 就无从校验。两者串行协作，构成「发现→修复→验证→放行」的完整安全闭环。
+**Relationship with `review`**: `deploy` depends on vulnerability data and ticket state produced during the `review` stage. Without `review`'s scan findings, `deploy` has nothing to verify. The two work in series, forming a complete "Discover → Fix → Verify → Release" security closed loop.
 
-## 项目名配置
+## Project Name Configuration
 
-创建工单时需要关联项目名。**默认自动检测**，无需手动填写：
+Ticket creation requires a project name. **Auto-detected by default** — no manual configuration needed:
 
-| 优先级 | 来源 | 说明 |
-|--------|------|------|
-| 1 | `SECURITY_WORKFLOW_PROJECT` 环境变量 | 最高优先级，适合 CI/CD 场景 |
-| 2 | `.security-workflow` 配置文件 | 在项目根目录创建 `{"project": "my-app"}` |
-| 3 | 当前目录名 | 默认回退，无需任何配置 |
+| Priority | Source | Description |
+|----------|--------|-------------|
+| 1 | `SECURITY_WORKFLOW_PROJECT` env var | Highest priority, ideal for CI/CD |
+| 2 | `.security-workflow` config file | Create `{"project": "my-app"}` in project root |
+| 3 | Current directory name | Default fallback, zero config needed |
 
 ```bash
-# 方式1: 环境变量（CI/CD 推荐）
+# Option 1: Environment variable (recommended for CI/CD)
 export SECURITY_WORKFLOW_PROJECT="my-backend-api"
 
-# 方式2: 配置文件（项目内推荐）
+# Option 2: Config file (recommended within a project)
 echo '{"project": "my-backend-api"}' > .security-workflow
 
-# 方式3: 什么都不做，自动取目录名
+# Option 3: Do nothing — auto-detects directory name
 # cd ~/work/my-backend-api → project = "my-backend-api"
 ```
 
-## 环境变量
+## Environment Variables
 
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `SECURITY_FIX_APPLY` | false | `true` 启用实际修复（默认干跑） |
-| `SECURITY_FIX_VERBOSE` | false | `true` 输出完整 diff |
-| `SECURITY_WORKFLOW_DATA` | .security-workflow-data | 统一数据目录（日志、备份、工单、审计） |
-| `SECURITY_WORKFLOW_PROJECT` | (当前目录名) | 项目名，用于工单分组和上线卡点过滤 |
-| `SECURITY_WORKFLOW_ENGINE_PATH` | ./security_workflow | MCP 引擎 Python 包路径 |
-| `SECURITY_WORKFLOW_DEBUG` | false | `true` 启用完整 traceback 输出（生产环境应关闭） |
-| `SECURITY_WORKFLOW_ENV` | production | 运行环境标识 |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SECURITY_FIX_APPLY` | false | `true` enables actual fix application (default is dry-run) |
+| `SECURITY_FIX_VERBOSE` | false | `true` outputs full diff |
+| `SECURITY_WORKFLOW_DATA` | .security-workflow-data | Unified data directory (logs, backups, tickets, audit) |
+| `SECURITY_WORKFLOW_PROJECT` | (current dir name) | Project name for ticket grouping and deploy gate filtering |
+| `SECURITY_WORKFLOW_ENGINE_PATH` | ./security_workflow | MCP engine Python package path |
+| `SECURITY_WORKFLOW_DEBUG` | false | `true` enables full traceback output (should be off in production) |
+| `SECURITY_WORKFLOW_ENV` | production | Runtime environment identifier |
 
-## 钩子
+## Hooks
 
-### check-bash.sh — 安全预检
+### check-bash.sh — Security Pre-Check
 
-| 触发时机 | 行为 |
-|---------|------|
-| 文件保存 | 单文件增量扫描 |
-| 命令执行前 | 全项目扫描 |
-| Git 提交前 | 全项目扫描 |
+| Trigger | Behavior |
+|---------|----------|
+| File save | Single-file incremental scan |
+| Pre-command execution | Full project scan |
+| Pre-Git commit | Full project scan |
 
-退出码: `0`=通过, `1`=中危警告(不阻断), `2`=高危阻断
+Exit codes: `0` = Pass, `1` = Medium-Risk Warning (non-blocking), `2` = High-Risk Block
 
-**覆盖文件类型**（33 种扩展名，覆盖主流语言 + 配置文件）：
+**Covered File Types** (33 extensions, mainstream languages + config files):
 
-| 类别 | 扩展名 |
-|------|--------|
-| 脚本/动态 | `.py` `.js` `.ts` `.rb` `.php` `.lua` |
-| 编译型 | `.java` `.go` `.rs` `.c` `.cpp` `.cc` `.cxx` `.h` `.hpp` `.hxx` `.cs` `.swift` `.kt` `.kts` `.scala` `.dart` |
-| 前端 | `.vue` `.html` |
+| Category | Extensions |
+|----------|------------|
+| Scripting / Dynamic | `.py` `.js` `.ts` `.rb` `.php` `.lua` |
+| Compiled | `.java` `.go` `.rs` `.c` `.cpp` `.cc` `.cxx` `.h` `.hpp` `.hxx` `.cs` `.swift` `.kt` `.kts` `.scala` `.dart` |
+| Frontend | `.vue` `.html` |
 | Shell | `.sh` `.bash` `.zsh` |
-| 配置 | `.yml` `.yaml` `.json` `.xml` `.toml` `.ini` `.cfg` `.conf` |
-| 数据库 | `.sql` |
+| Config | `.yml` `.yaml` `.json` `.xml` `.toml` `.ini` `.cfg` `.conf` |
+| Database | `.sql` |
 
-### auto-fix-security.sh — 低危自动修复
+### auto-fix-security.sh — Low-Risk Auto-Fix
 
-- **仅触发于 Git 提交前**（不在文件保存时执行）
-- **默认干跑**：`SECURITY_FIX_APPLY=true` 才实际修改
-- **手术刀式匹配**：只删 `console.log("debug...")` / `print("temp...")` / `pdb.set_trace()` / `debugger;` / 空 TODO 注释
-- **备份+回滚**：修改前自动备份，失败自动恢复
-- **审计日志**：每次运行写入 `$SECURITY_WORKFLOW_DATA/fix-audit/`
+- **Triggers only before Git commit** (not on file save)
+- **Dry-run by default**: set `SECURITY_FIX_APPLY=true` to actually modify files
+- **Surgical matching**: only removes `console.log("debug...")` / `print("temp...")` / `pdb.set_trace()` / `debugger;` / empty TODO comments
+- **Backup + rollback**: auto-backup before changes, auto-restore on failure
+- **Audit log**: every run writes to `$SECURITY_WORKFLOW_DATA/fix-audit/`
 
-## 各平台兼容性
+## Cross-Platform Compatibility
 
-| 依赖 | macOS | Linux | Windows |
-|------|-------|-------|---------|
-| Bash 4.0+ | `brew install bash` | 已内置 | Git Bash / WSL |
-| GNU grep（`\b` 支持） | `brew install grep` | 已内置 | Git Bash 内置 |
-| Perl 5+ | 已内置 | 已内置 | Git Bash 内置 |
+| Dependency | macOS | Linux | Windows |
+|------------|-------|-------|---------|
+| Bash 4.0+ | `brew install bash` | Built-in | Git Bash / WSL |
+| GNU grep (`\b` support) | `brew install grep` | Built-in | Git Bash built-in |
+| Perl 5+ | Built-in | Built-in | Git Bash built-in |
 | Git | `xcode-select --install` | `apt install git` | Git Bash / WSL |
-| Python 3.10+ | 🟡 可选（已内置 3.x，检查版本） | 🟡 可选 | 🟡 可选 |
+| Python 3.10+ | 🟡 Optional (built-in 3.x, check version) | 🟡 Optional | 🟡 Optional |
 
-> **macOS 特别提醒**：macOS 自带 BSD grep **不支持 `\b` 词边界**，会导致所有安全扫描模式静默失效（不报错，但匹配不到任何东西）。安装 GNU grep 后，`check-bash.sh` 启动时会自动检测并告警。
+> **macOS Alert**: macOS's built-in BSD grep **does not support `\b` word boundaries**, which silently disables all security scan patterns (no errors, but nothing matches). After installing GNU grep, `check-bash.sh` auto-detects and warns on startup.
 
-## 统一数据目录
+## Unified Data Directory
 
-所有运行时产出存放在 `$SECURITY_WORKFLOW_DATA`（默认 `.security-workflow-data/`）：
+All runtime artifacts are stored under `$SECURITY_WORKFLOW_DATA` (default `.security-workflow-data/`):
 
 ```
 .security-workflow-data/
-├── fix-audit/                    # auto-fix-security.sh 产出
-│   ├── fix-{timestamp}.log       #   审计日志
-│   └── backups/{timestamp}/      #   修复前备份
-├── tickets.json                  # MCP engine 工单存储
-├── audit_log.jsonl               # MCP engine 操作轨迹
-├── notifications.jsonl           # 通知记录
-└── reports/                      # /security-workflow:review|deploy 自动生成
-    ├── {project}-review.md       #   评审报告（发现+策略+待办）
-    └── {project}-deploy.md       #   卡点报告（准入+阻断+闭环）
+├── fix-audit/                     # auto-fix-security.sh output
+│   ├── fix-{timestamp}.log        #   Audit logs
+│   └── backups/{timestamp}/       #   Pre-fix backups
+├── tickets.json                   # MCP engine ticket storage
+├── audit_log.jsonl                # MCP engine operation trail
+├── notifications.jsonl            # Notification records
+└── reports/                       # Auto-generated by /review & /deploy
+    ├── {project}-review.md        #   Review report (findings + strategy + TODOs)
+    └── {project}-deploy.md        #   Gate report (admission + blocking + closure)
 ```
 
-已加入 `.gitignore`，不会误提交。
+Added to `.gitignore` — no accidental commits.
 
-## 目录结构
+## Directory Structure
 
 ```
 security-workflow/
-├── .claude-plugin/plugin.json    # 插件注册
-├── .mcp.json                     # MCP 引擎连接配置
-├── commands/                     # /security-workflow:review|deploy
-├── agents/                       # security-scanner, quick-fix
-├── skills/                       # 安全评审规范
-├── hooks/                        # check-bash.sh, auto-fix-security.sh
-├── security_workflow/            # Python MCP 流程引擎
-│   ├── mcp_server.py             #   入口 (7 tools)
-│   ├── core/                     #   工单流转、卡点判定
-│   ├── definition/               #   枚举 + 共享常量
-│   ├── model/                    #   数据模型
-│   ├── persistence/              #   JSON 持久化
-│   ├── timer/                    #   超时计算
-│   ├── spi/                      #   通知扩展点
-│   └── report/                   #   审计报告自动生成
+├── .claude-plugin/plugin.json     # Plugin registration
+├── .mcp.json                      # MCP engine connection config
+├── commands/                      # /security-workflow:review|deploy
+├── agents/                        # security-scanner, quick-fix
+├── skills/                        # Security review patterns
+├── hooks/                         # check-bash.sh, auto-fix-security.sh
+├── security_workflow/             # Python MCP process engine
+│   ├── mcp_server.py              #   Entry point (7 tools)
+│   ├── core/                      #   Ticket workflow, gate decisions
+│   ├── definition/                #   Enums + shared constants
+│   ├── model/                     #   Data models
+│   ├── persistence/               #   JSON persistence
+│   ├── timer/                     #   Timeout calculation
+│   ├── spi/                       #   Notification extension points
+│   └── report/                    #   Audit report auto-generation
 ├── tests/
-│   ├── vuln_cases/               # 漏洞测试样本（高/中/低）
-│   └── integration_test.py       # 联动集成测试
-└── examples/                     # 各语言安全编码样板
+│   ├── vuln_cases/                # Vulnerability test samples (High/Medium/Low)
+│   └── integration_test.py        # End-to-end integration test
+└── examples/                      # Multi-language secure coding templates
 ```
 
-## 变更记录
+## Changelog
 
-### v1.0.2 (2026-06-25) — 报告自动生成 + 漏洞修复版
+### v1.0.2 (2026-06-25) — Report Auto-Generation + Bug Fix Release
 
-**新增:**
-- `security_workflow/report/` — review/deploy 各自独立模板的报告引擎，`/security-workflow:review` `/security-workflow:deploy` 执行完毕后自动落盘 `.security-workflow-data/reports/`
-- `security_workflow/definition/constants.py` — 共享常量模块，消除 persistence/spi 中硬编码路径重复
-- MCP `generate_report` 工具（第 7 个 tool），支持 `review`/`deploy` 两种报告类型
-- `auto-fix-security.sh` Bash 版本检查（4.0+），macOS 用户收到明确升级指引而非语法错误
+**Added:**
+- `security_workflow/report/` — Report engine with separate templates for review/deploy. Reports auto-saved to `.security-workflow-data/reports/` after `/security-workflow:review` and `/security-workflow:deploy`.
+- `security_workflow/definition/constants.py` — Shared constants module, eliminating hardcoded path duplication in persistence/spi.
+- MCP `generate_report` tool (7th tool), supporting both `review` and `deploy` report types.
+- `auto-fix-security.sh` Bash version check (4.0+), giving macOS users a clear upgrade instruction instead of syntax errors.
 
-**已修复 (7 低危 + 3 中危):**
-- 🔧 低危: `persistence/__init__.py` / `spi/__init__.py` 硬编码默认路径 → 共享常量
-- 🔧 低危: `check-bash.sh` TARGET 路径校验 + wc 退出码区分处理
-- 🔧 低危: `auto-fix-security.sh` Perl `-s` 开关安全传参（防变量注入）
-- 🔧 低危: `integration_test.py` `sys.path.insert(0)` → `append`（防模块劫持）
-- 🟡 中危: `mcp_server.py` traceback 不再通过 JSON-RPC error.data 泄露给客户端
-- 🟡 中危: `mcp_server.py` traceback 写入 stderr 受 `SECURITY_WORKFLOW_DEBUG` 环境变量控制
-- 🟡 中危: `core/__init__.py` 配置文件路径增加 `resolve()` 规范化和项目根目录围栏校验
+**Fixed (7 Low + 3 Medium):**
+- 🔧 Low: `persistence/__init__.py` / `spi/__init__.py` hardcoded default paths → shared constants
+- 🔧 Low: `check-bash.sh` TARGET path validation + wc exit code differentiation
+- 🔧 Low: `auto-fix-security.sh` Perl `-s` switch safe argument passing (prevent variable injection)
+- 🔧 Low: `integration_test.py` `sys.path.insert(0)` → `append` (prevent module hijacking)
+- 🟡 Medium: `mcp_server.py` traceback no longer leaks to client via JSON-RPC error.data
+- 🟡 Medium: `mcp_server.py` traceback writes to stderr controlled by `SECURITY_WORKFLOW_DEBUG` env var
+- 🟡 Medium: `core/__init__.py` config file path now uses `resolve()` normalization + project root fence validation
 
-**报告文件命名:** 稳定覆盖（`{project}-{review|deploy}.md`），不产生堆积
+**Report file naming:** stable overwrite (`{project}-{review|deploy}.md`), no accumulation.
 
-### v1.0.1 (2026-06-25) — smoke test 修复版
+### v1.0.1 (2026-06-25) — Smoke Test Fix Release
 
-**已修复的 bug (6 个)**：
-- CRITICAL #2: `review.md`/`deploy.md` — YAML frontmatter 方括号被解析为流式序列，命令无法加载 → 加引号
-- BUG #5: `auto-fix-security.sh` — `[\s:_,-]` 在 POSIX ERE 方括号内不识别 `\s`，所有匹配模式永不命中 → 改为 `[[:space:]:_,-]`
-- BUG #6: `auto-fix-security.sh` — `set -u` 下访问未初始化关联数组键 crash → 加 `${VAR-}` 默认值
-- CRITICAL #3: `auto-fix-security.sh` — 已由原始 sed -i 重写为 perl + 干跑 + 手术刀匹配 + 备份回滚
-- CRITICAL #4: `check-bash.sh` — 已由 grep -v "#" 改为 sed -E 精确剥离注释
-- CRITICAL #1: `security-scanner.md` — xxd 验证无 BOM、无前置文字，无法复现
+**Fixed bugs (6):**
+- CRITICAL #2: `review.md`/`deploy.md` — YAML frontmatter brackets parsed as flow sequences, commands couldn't load → quoted
+- BUG #5: `auto-fix-security.sh` — `[\s:_,-]` inside POSIX ERE brackets didn't recognize `\s`, all match patterns never hit → changed to `[[:space:]:_,-]`
+- BUG #6: `auto-fix-security.sh` — accessing uninitialized associative array key under `set -u` crashed → added `${VAR-}` defaults
+- CRITICAL #3: `auto-fix-security.sh` — rewritten from raw `sed -i` to perl + dry-run + surgical match + backup/rollback
+- CRITICAL #4: `check-bash.sh` — replaced `grep -v "#"` with `sed -E` for precise comment stripping
+- CRITICAL #1: `security-scanner.md` — verified no BOM, no leading text with xxd; unreproducible
 
-**新增**：
-- Python MCP 流程引擎完整实现（10 个 .py 文件，6 个 MCP tools）
-- `tests/integration_test.py` — `/security-workflow:review` → `/security-workflow:deploy` 联动集成测试
-- 统一数据目录 `$SECURITY_WORKFLOW_DATA`
-- `.gitignore` 防止运行时数据误提交
+**Added:**
+- Complete Python MCP process engine implementation (10 .py files, 6 MCP tools)
+- `tests/integration_test.py` — `/security-workflow:review` → `/security-workflow:deploy` end-to-end integration test
+- Unified data directory `$SECURITY_WORKFLOW_DATA`
+- `.gitignore` to prevent accidental runtime data commits
 
-**已验证**：
-- `check-bash.sh`: 3/3 分级正确（高危阻断 exit 2、中危警告 exit 1、低危通过 exit 0）
-- `auto-fix-security.sh`: 干跑检测 2/2、实际修复精准删除 2 行、备份+日志完整
-- MCP engine: 6/6 tools 响应正常，工单创建→流转→驳回→卡点→审计全链路通过
-- 集成测试: 8/8 步骤通过，PASS
+**Verified:**
+- `check-bash.sh`: 3/3 correct classification (High block exit 2, Medium warn exit 1, Low pass exit 0)
+- `auto-fix-security.sh`: dry-run detection 2/2, actual fix precision-deleted 2 lines, backup + logs complete
+- MCP engine: 6/6 tools responsive, ticket create→transition→reject→gate→audit full pipeline passes
+- Integration test: 8/8 steps passed, PASS
