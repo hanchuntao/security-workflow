@@ -210,12 +210,12 @@ else
     while IFS= read -r file; do
       [[ -f "$file" ]] || continue
       scan_file "$file"
-    done < <(git ls-files --cached --others --exclude-standard -- '*.py' '*.js' '*.ts' '*.java' '*.go' '*.php' '*.vue' '*.html' '*.sh' '*.bash' '*.zsh' '*.yml' '*.yaml' '*.json' 2>/dev/null)
+    done < <(git ls-files --cached --others --exclude-standard -- '*.py' '*.js' '*.ts' '*.java' '*.go' '*.php' '*.rb' '*.rs' '*.c' '*.cpp' '*.cc' '*.cxx' '*.h' '*.hpp' '*.hxx' '*.cs' '*.swift' '*.kt' '*.kts' '*.scala' '*.dart' '*.lua' '*.sql' '*.vue' '*.html' '*.sh' '*.bash' '*.zsh' '*.yml' '*.yaml' '*.json' '*.xml' '*.toml' '*.ini' '*.cfg' '*.conf' 2>/dev/null)
   else
     # 非 git 仓库回退到 find
     while IFS= read -r file; do
       scan_file "$file"
-    done < <(find . \( -name '*.py' -o -name '*.js' -o -name '*.ts' -o -name '*.java' -o -name '*.go' -o -name '*.php' -o -name '*.vue' -o -name '*.sh' -o -name '*.bash' -o -name '*.yml' -o -name '*.yaml' -o -name '*.json' \) -type f 2>/dev/null)
+    done < <(find . \( -name '*.py' -o -name '*.js' -o -name '*.ts' -o -name '*.java' -o -name '*.go' -o -name '*.php' -o -name '*.rb' -o -name '*.rs' -o -name '*.c' -o -name '*.cpp' -o -name '*.cc' -o -name '*.cxx' -o -name '*.h' -o -name '*.hpp' -o -name '*.hxx' -o -name '*.cs' -o -name '*.swift' -o -name '*.kt' -o -name '*.kts' -o -name '*.scala' -o -name '*.dart' -o -name '*.lua' -o -name '*.sql' -o -name '*.vue' -o -name '*.html' -o -name '*.sh' -o -name '*.bash' -o -name '*.yml' -o -name '*.yaml' -o -name '*.json' -o -name '*.xml' -o -name '*.toml' -o -name '*.ini' -o -name '*.cfg' -o -name '*.conf' \) -type f 2>/dev/null)
   fi
 fi
 

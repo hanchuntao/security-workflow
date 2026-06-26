@@ -189,6 +189,17 @@ echo '{"project": "my-backend-api"}' > .security-workflow
 
 退出码: `0`=通过, `1`=中危警告(不阻断), `2`=高危阻断
 
+**覆盖文件类型**（33 种扩展名，覆盖主流语言 + 配置文件）：
+
+| 类别 | 扩展名 |
+|------|--------|
+| 脚本/动态 | `.py` `.js` `.ts` `.rb` `.php` `.lua` |
+| 编译型 | `.java` `.go` `.rs` `.c` `.cpp` `.cc` `.cxx` `.h` `.hpp` `.hxx` `.cs` `.swift` `.kt` `.kts` `.scala` `.dart` |
+| 前端 | `.vue` `.html` |
+| Shell | `.sh` `.bash` `.zsh` |
+| 配置 | `.yml` `.yaml` `.json` `.xml` `.toml` `.ini` `.cfg` `.conf` |
+| 数据库 | `.sql` |
+
 ### auto-fix-security.sh — 低危自动修复
 
 - **仅触发于 Git 提交前**（不在文件保存时执行）
