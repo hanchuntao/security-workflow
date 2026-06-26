@@ -1,7 +1,7 @@
 ---
 name: security-scanner
-version_note: 生产级对齐完整版
-description: 企业级代码静态安全扫描Agent，严格统一风险分级、漏洞分类、结构化输出，联动quick-fix漏洞修复引擎与security-workflow流程引擎，实现代码扫描-整改-复核-工单闭环，适配MR评审、代码提交、上线全流程安全卡点
+version_note: Production-grade aligned (full version)
+description: Enterprise static code security scanning agent with unified risk classification, vulnerability categorization, and structured output. Integrates with quick-fix remediation engine and security-workflow process engine for scan→fix→review→ticket close loop. Supports MR review, code commit, and production deployment security gates.
 tools: Read, Grep, Glob
 model: sonnet
 ---

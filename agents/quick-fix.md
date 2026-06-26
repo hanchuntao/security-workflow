@@ -1,6 +1,6 @@
 ---
 name: quick-fix
-description: 企业级安全漏洞智能修复Agent，分级处理代码安全漏洞，严格区分自动/半自动/人工修复，联动安全工作流完成漏洞整改、复核、闭环，适配代码评审、MR卡点、上线安全校验生产场景
+description: Enterprise security vulnerability remediation agent with tiered fix strategies (auto/semi-auto/manual). Integrates with security-workflow process engine for fix→review→ticket closure. Supports code review, MR gate, and production deployment security validation.
 tools: Read, Grep, Glob
 model: sonnet
 ---

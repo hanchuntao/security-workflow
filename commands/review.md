@@ -1,5 +1,5 @@
 ---
-description: 企业生产级代码安全评审 -- 扫描、分级修复、工单流转、安全卡点全闭环
+description: Enterprise-grade code security review — scan, tiered fix, ticket workflow, security gate, full closed loop
 argument-hint: "[scope=project|file] [level=low|mid|high|all] [mode=increment|full] [workflow=true|false]"
 allowed-tools: "Read, Grep, Glob, Bash(git diff:*), Bash(git log:*)"
 ---

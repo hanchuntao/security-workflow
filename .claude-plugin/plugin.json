@@ -1,7 +1,7 @@
 {
   "name": "security-workflow",
   "version": "1.0.2",
-  "description": "企业生产级代码安全评审流水线插件 — SAST静态扫描 + 三级分级修复 + 工单流转 + 上线卡点 + 合规审计全闭环",
+  "description": "Enterprise-grade code security review pipeline — SAST static scanning + 3-tier risk remediation + ticket workflow + deployment gate + compliance audit, full closed loop",
   "author": {
     "name": "Chuntao Han",
     "url": "https://github.com/hanchuntao/security-workflow"
@@ -34,12 +34,12 @@
       }
     }
   },
-  "entry_scope": ["**/*.py", "**/*.js", "**/*.ts", "**/*.java", "**/*.go", "**/*.php", "**/*.vue", "**/*.html", "**/*.sh", "**/*.yml", "**/*.yaml", "**/*.json", "**/*.bash", "**/*.zsh"],
+  "entry_scope": ["**/*.py", "**/*.js", "**/*.ts", "**/*.java", "**/*.go", "**/*.php", "**/*.rb", "**/*.rs", "**/*.c", "**/*.cpp", "**/*.cc", "**/*.cxx", "**/*.h", "**/*.hpp", "**/*.hxx", "**/*.cs", "**/*.swift", "**/*.kt", "**/*.kts", "**/*.scala", "**/*.dart", "**/*.lua", "**/*.sql", "**/*.vue", "**/*.html", "**/*.sh", "**/*.bash", "**/*.zsh", "**/*.yml", "**/*.yaml", "**/*.json", "**/*.xml", "**/*.toml", "**/*.ini", "**/*.cfg", "**/*.conf"],
   "global_constraints": [
-    "严格执行高/中/低三级漏洞分级管控，高危漏洞禁止自动修复、阻断上线",
-    "所有扫描、修复、评审数据结构化留存，支撑安全审计合规",
-    "上线卡点无豁免权限，禁止人工跳过安全校验流程",
-    "所有漏洞整改遵循最小代码改动原则，保障业务无损",
-    "所有流程必须联动security-workflow引擎完成工单闭环流转"
+    "Strict 3-tier vulnerability classification (High/Medium/Low): High-risk flaws block deployment and forbid auto-fix",
+    "All scan, fix, and review data is structurally preserved for audit compliance",
+    "Deployment gate has zero bypass privilege — no manual override of security checks",
+    "All vulnerability fixes follow minimal-change principle to avoid business disruption",
+    "Every workflow stage must integrate with the security-workflow engine for ticket lifecycle closure"
   ]
 }

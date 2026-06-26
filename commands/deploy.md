@@ -1,5 +1,5 @@
 ---
-description: 生产上线安全卡点 -- 强制全量扫描、阻断未整改漏洞、合规准入判定
+description: Production deployment security gate — mandatory full scan, block unpatched vulnerabilities, compliance admission check
 argument-hint: "[branch=main|test|hotfix] [skip-review=false] [force=false] [workflow=true]"
 allowed-tools: "Read, Grep, Glob, Bash(git:*), Bash(git diff:*), Bash(git log:*)"
 ---
