@@ -19,7 +19,7 @@ TARGET="${1:-.}"
 TIMESTAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u '+%Y-%m-%dT%H:%M:%SZ')"
 
 # 校验 TARGET 为合法路径
-if [[ -n "$1" ]]; then
+if [[ -n "${1:-}" ]]; then
   if command -v realpath &>/dev/null; then
     TARGET=$(realpath "$1" 2>/dev/null || echo "$1")
   elif [[ -f "$1" ]] || [[ -d "$1" ]]; then
