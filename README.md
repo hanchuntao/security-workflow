@@ -176,6 +176,19 @@ echo '{"project": "my-backend-api"}' > .security-workflow
 | `SECURITY_WORKFLOW_ENGINE_PATH` | ./security_workflow | MCP engine Python package path |
 | `SECURITY_WORKFLOW_DEBUG` | false | `true` enables full traceback output (should be off in production) |
 | `SECURITY_WORKFLOW_ENV` | production | Runtime environment identifier |
+| `SECURITY_WORKFLOW_LANG` | en | Report language: `en` (English) or `zh` (Chinese, for 等保2.0 compliance audit). Overridable per-command via `lang=zh` parameter on `/review` or `/deploy`. |
+
+## Report Language (Bilingual)
+
+Reports default to **English** for the international marketplace. For Chinese compliance scenarios (等保2.0 audit, domestic security review), switch to Chinese via any of these methods:
+
+| Method | Example | Best for |
+|--------|---------|----------|
+| Environment variable | `export SECURITY_WORKFLOW_LANG=zh` | CI/CD pipelines, team-wide config |
+| Command parameter | `/review ... lang=zh` or `/deploy ... lang=zh` | One-off Chinese reports |
+| MCP tool argument | `generate_report(..., lang="zh")` | Programmatic / agent-driven report generation |
+
+> **Priority**: explicit `lang` parameter > `SECURITY_WORKFLOW_LANG` env var > default `en`.
 
 ## Hooks
 
