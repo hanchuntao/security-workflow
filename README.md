@@ -84,7 +84,27 @@ SECURITY_FIX_APPLY=true bash hooks/auto-fix-security.sh
 
 ## 命令参考
 
-### `/security-workflow:review` — 代码安全评审
+本插件提供两个核心命令，分别对应研发流程中的**两个不同阶段**：
+
+```
+写代码 → 保存 → git commit → /review（代码评审，发现问题）
+                                   │
+                                   ▼
+                          quick-fix 修复 + 工单闭环
+                                   │
+                                   ▼
+                          /deploy（上线卡点，验证放行）→ 🚀 上线
+```
+
+> **打个比方**：`review` 是飞机制造阶段的质检——检查每个零件有没有裂纹，发现问题的送去维修，修好签字归档。`deploy` 是起飞前塔台的放行许可——飞机推到跑道上了，塔台做最后一道强制检查：起落架修好了没？维修工单全部签字没？有一项不合格就直接拒飞，没有人情可讲。
+
+---
+
+### `/security-workflow:review` — 代码安全评审（发现问题阶段）
+
+在**开发阶段**对代码进行静态安全扫描，检测 OWASP Top10、企业安全规范、等保合规项等各类漏洞。发现问题后联动 quick-fix 引擎提出修复方案、创建安全工单流转，全程留痕可追溯。
+
+**触发时机**：文件保存后、Git 提交前、MR/PR 评审时
 
 ```
 /security-workflow:review scope=project level=all mode=full workflow=true
@@ -92,12 +112,18 @@ SECURITY_FIX_APPLY=true bash hooks/auto-fix-security.sh
 
 | 参数 | 可选值 | 默认 | 说明 |
 |------|--------|------|------|
-| scope | file / project | project | `project` = 全项目扫描；`file` = 仅当前文件 |
-| level | low / mid / high / all | all | 最低检测风险等级 |
-| mode | increment / full | full | 增量快扫 / 全量深度 |
-| workflow | true / false | true | 是否创建工单、联动流程引擎 |
+| scope | file / project | project | `project` = 全项目深度扫描；`file` = 仅扫描当前文件 |
+| level | low / mid / high / all | all | 最低检测风险等级。`low`=只报≥低危；`high`=只报高危 |
+| mode | increment / full | full | `increment`=仅扫描变更部分（快）；`full`=全量深度（准） |
+| workflow | true / false | true | `true`=扫描后自动创建工单、联动 MCP 流程引擎追踪闭环 |
 
-### `/security-workflow:deploy` — 上线安全卡点
+---
+
+### `/security-workflow:deploy` — 上线安全卡点（验证放行阶段）
+
+在**上线发布前**执行的最后一道强制安全校验，是研发流程的最终安全防线。它不是又一次扫描，而是**校验是否所有已知漏洞都已整改、所有安全工单都已闭环**——任何未整改的高危/中危漏洞直接阻断上线，无豁免权限。
+
+**触发时机**：正式发布前、CICD 流水线卡点
 
 ```
 /security-workflow:deploy branch=main
@@ -105,10 +131,18 @@ SECURITY_FIX_APPLY=true bash hooks/auto-fix-security.sh
 
 | 参数 | 可选值 | 默认 | 说明 |
 |------|--------|------|------|
-| branch | 分支名 | main | 待上线分支 |
-| skip-review | false | false | 生产强制 false |
-| force | true / false | false | 紧急热修复用，需安全负责人审批 |
-| workflow | true / false | true | 联动流程引擎 |
+| branch | 分支名 | main | 待上线代码分支，精准校验该分支的漏洞整改状态 |
+| skip-review | false | false | **生产环境永久锁定 false**，禁止跳过安全评审校验 |
+| force | true / false | false | `true`=紧急故障修复强制上线（需安全负责人审批，事后24h内必须复盘备案） |
+| workflow | true / false | true | `true`=联动流程引擎更新工单发布状态、留存审计轨迹 |
+
+**硬性拦截规则（无豁免）**：
+- 🔴 生产分支存在**任意未修复高危漏洞** → 100% 阻断上线
+- 🟡 中危漏洞**批量堆积或超期未整改** → 自动升级为阻断级
+- 📋 存在**未闭环安全工单**（待评审/待整改/待复核） → 拦截发布
+- ⏰ 超时未处理工单 → 自动抄送预警安全负责人
+
+**与 `review` 的关系**：`deploy` 依赖 `review` 阶段产生的漏洞数据和工单状态。没有 `review` 的扫描发现，`deploy` 就无从校验。两者串行协作，构成「发现→修复→验证→放行」的完整安全闭环。
 
 ## 项目名配置
 
