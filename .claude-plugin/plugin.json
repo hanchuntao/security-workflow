@@ -28,8 +28,8 @@
     "security-workflow-mcp-engine": {
       "command": "python3",
       "args": ["-m", "security_workflow.mcp_server"],
+      "cwd": "${CLAUDE_PLUGIN_ROOT}",
       "env": {
-        "PYTHONPATH": "${SECURITY_WORKFLOW_ENGINE_PATH:-./security_workflow}",
         "ENV": "${SECURITY_WORKFLOW_ENV:-production}"
       }
     }
