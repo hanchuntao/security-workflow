@@ -1,4 +1,4 @@
-"""超时时钟 — 中危限期整改、高危超时升级."""
+"""Timeout clock — Medium-risk deadline tracking, High-risk overdue escalation."""
 
 from .clock import compute_deadline, is_overdue, overdue_duration_hours
 

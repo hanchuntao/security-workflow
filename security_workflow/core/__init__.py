@@ -1,4 +1,4 @@
-"""核心引擎 — 工单流转、状态变更、上线卡点判定."""
+"""Core engine — ticket lifecycle, state transitions, deployment gate decisions."""
 
 from __future__ import annotations
 
@@ -17,38 +17,38 @@ from ..definition.enums import (
     is_closed_status,
 )
 
-# ── 项目名自动检测 ────────────────────────────────────────────────────────────
+# ── Project name auto-detection ─────────────────────────────────────────────────
 
-# 缓存在模块级别，避免重复读取
+# Cached at module level to avoid repeated reads
 _cached_project: str | None = None
 
 
 def detect_project_name() -> str:
-    """自动检测当前项目名。
+    """Auto-detect the current project name.
 
-    优先级:
-    1. 环境变量 SECURITY_WORKFLOW_PROJECT
-    2. .security-workflow 配置文件中的 project 字段
-    3. 当前工作目录名
+    Priority:
+    1. SECURITY_WORKFLOW_PROJECT environment variable
+    2. .security-workflow config file 'project' field
+    3. Current working directory name
 
-    结果缓存在模块级别，首次调用后不再重复检测。
+    Result is cached at module level; detection runs only once.
     """
     global _cached_project
     if _cached_project is not None:
         return _cached_project
 
-    # 1. 环境变量
+    # 1. Environment variable
     env_project = os.environ.get("SECURITY_WORKFLOW_PROJECT", "").strip()
     if env_project:
         _cached_project = env_project
         return _cached_project
 
-    # 2. 配置文件（路径规范化 + 项目根目录围栏校验）
+    # 2. Config file (path normalization + project root fence validation)
     PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
     config_path = (PROJECT_ROOT / ".security-workflow").resolve()
-    # 围栏校验：确保解析后的路径在项目根目录内
+    # Fence check: ensure resolved path is within project root
     if not str(config_path).startswith(str(PROJECT_ROOT.resolve())):
-        # 路径越界，跳过非法配置
+        # Path escape — skip invalid config
         _cached_project = Path.cwd().name
         return _cached_project
     if config_path.exists():
@@ -61,7 +61,7 @@ def detect_project_name() -> str:
         except (json.JSONDecodeError, OSError):
             pass
 
-    # 3. 工作目录名
+    # 3. Working directory name
     _cached_project = Path.cwd().name
     return _cached_project
 from ..model import Ticket, ScanFinding, AuditEntry
@@ -76,16 +76,16 @@ def create_ticket(
     branch: str = "",
     project: str = "",
 ) -> Ticket:
-    """创建安全评审工单。
+    """Create a security review ticket.
 
-    project 为空时自动检测：
-      1. $SECURITY_WORKFLOW_PROJECT 环境变量
-      2. .security-workflow 配置文件 project 字段
-      3. 当前目录名
+    When project is empty, auto-detect via:
+      1. $SECURITY_WORKFLOW_PROJECT env var
+      2. .security-workflow config file 'project' field
+      3. Current directory name
     """
     risk_level = RiskLevel(risk_level_str)
 
-    # 自动检测项目名
+    # Auto-detect project name
     if not project:
         project = detect_project_name()
 
@@ -123,7 +123,7 @@ def create_ticket(
             from_status="",
             to_status=ticket.status.value,
             operator="system",
-            detail=f"工单创建 — 风险等级: {risk_level.value}, 漏洞数: {len(findings)}",
+            detail=f"Ticket created — risk level: {risk_level.value}, findings: {len(findings)}",
         )
     )
 
@@ -136,18 +136,18 @@ def transition_ticket(
     operator: str = "system",
     detail: str = "",
 ) -> Ticket:
-    """工单状态流转."""
+    """Transition a ticket to a new state."""
     target = TicketStatus(target_status_str)
     ticket = load_ticket(ticket_id)
     if ticket is None:
-        raise ValueError(f"工单不存在: {ticket_id}")
+        raise ValueError(f"Ticket not found: {ticket_id}")
 
-    # 检查流转是否合法
+    # Validate transition legality
     allowed = TRANSITION_MAP.get(ticket.status, [])
     if target not in allowed:
         raise ValueError(
-            f"非法的状态流转: {ticket.status.value} → {target.value}."
-            f" 允许的目标状态: {[s.value for s in allowed]}"
+            f"Illegal state transition: {ticket.status.value} → {target.value}."
+            f" Allowed targets: {[s.value for s in allowed]}"
         )
 
     old_status = ticket.status
@@ -166,7 +166,7 @@ def transition_ticket(
             from_status=old_status_str,
             to_status=target.value,
             operator=operator,
-            detail=detail or f"状态变更: {old_status_str} → {target.value}",
+            detail=detail or f"State change: {old_status_str} → {target.value}",
         )
     )
 
@@ -174,9 +174,9 @@ def transition_ticket(
 
 
 def reject_ticket(ticket_id: str, reason: str, operator: str) -> Ticket:
-    """驳回工单（要求重新整改）."""
+    """Reject a ticket (requires re-remediation)."""
     if not reason.strip():
-        raise ValueError("驳回工单必须填写驳回原因")
+        raise ValueError("Rejection reason is required")
 
     ticket = load_ticket(ticket_id)
     if ticket is None:
@@ -187,12 +187,12 @@ def reject_ticket(ticket_id: str, reason: str, operator: str) -> Ticket:
         ticket_id=ticket_id,
         target_status_str=TicketStatus.REJECTED.value,
         operator=operator,
-        detail=f"驳回原因: {reason}",
+        detail=f"Rejection reason: {reason}",
     )
 
 
 def check_and_mark_overdue() -> list[Ticket]:
-    """扫描所有工单，将超时工单标记为 OVERDUE."""
+    """Scan all tickets and mark overdue ones as OVERDUE."""
     overdue_tickets: list[Ticket] = []
     all_tickets = load_all_tickets()
 
@@ -208,37 +208,37 @@ def check_and_mark_overdue() -> list[Ticket]:
                     ticket_id=ticket.ticket_id,
                     target_status_str=TicketStatus.OVERDUE.value,
                     operator="system",
-                    detail=f"超时自动标记 — 截止时间: {ticket.deadline}",
+                    detail=f"Auto-marked overdue — deadline: {ticket.deadline}",
                 )
                 overdue_tickets.append(updated)
             except ValueError:
-                continue  # 状态不允许流转则跳过
+                continue  # Skip if state transition not allowed
 
     return overdue_tickets
 
 
 def check_deploy_gate(project: str = "", branch: str = "") -> dict[str, Any]:
-    """上线卡点校验 — 返回是否允许上线及阻断原因."""
+    """Deployment gate check — returns whether deployment is allowed and blocking reasons."""
     all_tickets = load_all_tickets()
 
     blocked_by: list[dict[str, Any]] = []
     warnings: list[dict[str, Any]] = []
 
-    # 先刷新超时状态
+    # Refresh overdue status first
     check_and_mark_overdue()
 
-    # 重新加载 (超时状态可能已更新)
+    # Reload (overdue status may have changed)
     all_tickets = load_all_tickets()
 
     for ticket in all_tickets:
-        # 过滤项目和分支
+        # Filter by project and branch
         if project and ticket.project and ticket.project != project:
             continue
         if branch and ticket.branch and ticket.branch != branch:
             continue
 
         if is_closed_status(ticket.status):
-            continue  # 已闭环，不阻断
+            continue  # Already closed, not blocking
 
         entry = {
             "ticket_id": ticket.ticket_id,
@@ -249,23 +249,23 @@ def check_deploy_gate(project: str = "", branch: str = "") -> dict[str, Any]:
         }
 
         if ticket.risk_level == RiskLevel.HIGH and not is_closed_status(ticket.status):
-            # 规则1: 存在未闭环高危工单 → 直接阻断
-            entry["reason"] = "存在未闭环高危漏洞工单，禁止上线"
+            # Rule 1: Unclosed High-risk ticket → direct block
+            entry["reason"] = "Unclosed High-risk vulnerability ticket — deployment blocked"
             blocked_by.append(entry)
 
         elif ticket.risk_level == RiskLevel.MEDIUM:
             if ticket.status == TicketStatus.OVERDUE:
-                # 规则2: 存在超时未整改中危工单 → 阻断
-                entry["reason"] = "存在超时未整改中危工单，禁止上线"
+                # Rule 2: Overdue unresolved Medium-risk ticket → block
+                entry["reason"] = "Overdue unresolved Medium-risk ticket — deployment blocked"
                 blocked_by.append(entry)
             elif not is_closed_status(ticket.status):
-                # 规则3: 存在未闭环中危工单 → 警告（不阻断）
-                entry["reason"] = "存在未闭环中危工单，建议限期整改"
+                # Rule 3: Unclosed Medium-risk ticket → warning (non-blocking)
+                entry["reason"] = "Unclosed Medium-risk ticket — fix within deadline recommended"
                 warnings.append(entry)
 
         elif ticket.risk_level == RiskLevel.LOW and not is_closed_status(ticket.status):
-            # 低危仅记录台账
-            entry["reason"] = "低危未优化项，记录台账不阻断"
+            # Low-risk logged to ledger only
+            entry["reason"] = "Low-risk unoptimized item — logged, not blocking"
             warnings.append(entry)
 
     allowed = len(blocked_by) == 0
@@ -275,7 +275,7 @@ def check_deploy_gate(project: str = "", branch: str = "") -> dict[str, Any]:
         "checked_at": datetime.now(timezone.utc).isoformat(),
         "blocked_by": blocked_by,
         "warnings": warnings,
-        "verdict": "允许上线" if allowed else "阻断上线",
+        "verdict": "ALLOWED" if allowed else "BLOCKED",
     }
 
 
@@ -285,9 +285,9 @@ def generate_review_report(
     scan_mode: str = "全量扫描",
     report_type: str = "review",
 ) -> dict[str, Any]:
-    """一站式：收集工单数据 → 生成报告 → 落盘。
+    """One-stop: collect ticket data → generate report → persist to disk.
 
-    供 /review 和 /deploy 命令在流程末尾调用。
+    Called by /review and /deploy commands at the end of their pipeline.
 
     Returns:
         {"filepath": str, "ticket_count": int, "finding_count": int, ...}
@@ -296,7 +296,7 @@ def generate_review_report(
 
     all_tickets = load_all_tickets()
 
-    # 过滤指定项目/分支的工单
+    # Filter tickets by specified project/branch
     filtered: list[dict] = []
     for t in all_tickets:
         if project and t.project and t.project != project:
@@ -305,10 +305,10 @@ def generate_review_report(
             continue
         filtered.append(t.to_dict())
 
-    # 执行 deploy gate（用于报告中展示阻断状态）
+    # Run deploy gate (to show blocking status in the report)
     gate = check_deploy_gate(project=project, branch=branch) if report_type == "deploy" else None
 
-    # 自动检测项目名
+    # Auto-detect project name
     effective_project = project or detect_project_name()
 
     filepath = generate_and_save(

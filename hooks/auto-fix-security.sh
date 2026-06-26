@@ -1,26 +1,26 @@
 #!/usr/bin/env bash
 # =============================================================================
-# 企业生产级低危安全漏洞自动修复钩子
-# 触发时机：Git 提交前 (pre_git_commit)，不触发于文件保存
+# Enterprise production-grade Low-risk vulnerability auto-fix hook
+# Trigger: before Git commit (pre_git_commit), not on file save
 #
-# 设计原则:
-#   1. 手术刀式精准匹配 — 只删除 100% 确定为调试/临时/废弃的低危代码行
-#   2. 绝不触碰生产日志 — console.log(业务)、print(业务) 不会被删除
-#   3. 默认干跑模式 — 仅输出审计报告，需显式设置环境变量才实际修改文件
-#   4. 全链路审计 — 每一条修改记录均写带时间戳的审计日志
-#   5. 三重安全保障 — 备份 + .gitignore 感知 + 幂等（重复运行无副作用）
+# Design principles:
+#   1. Surgical precision matching — only remove 100% confirmed debug/temp/deprecated Low-risk code lines
+#   2. Never touch production logs — console.log(business), print(business) will not be removed
+#   3. Default dry-run mode — audit report only; explicit env var required to modify files
+#   4. Full-chain audit — every modification logged with timestamp
+#   5. Triple safety — backup + .gitignore-aware + idempotent (repeat runs are no-op)
 #
-# 使用方式:
-#   ./auto-fix-security.sh                           # 干跑模式 (仅审计)
-#   SECURITY_FIX_APPLY=true ./auto-fix-security.sh   # 执行修复
+# Usage:
+#   ./auto-fix-security.sh                           # Dry-run mode (audit only)
+#   SECURITY_FIX_APPLY=true ./auto-fix-security.sh   # Apply fix
 #
-# 环境变量:
-#   SECURITY_FIX_APPLY=true  开启实际修复（默认 false，仅审计）
-#   SECURITY_FIX_VERBOSE=true 显示完整 diff 输出
+# Environment variables:
+#   SECURITY_FIX_APPLY=true  enable actual fix (default false, audit only)
+#   SECURITY_FIX_VERBOSE=true show full diff output
 # =============================================================================
 set -euo pipefail
 
-# ── 配置 ────────────────────────────────────────────────────────────────────
+# ── Configuration ────────────────────────────────────────────────────────────────────
 DRY_RUN="${SECURITY_FIX_APPLY:-false}"
 DRY_RUN="$([[ "$DRY_RUN" == "true" ]] && echo "false" || echo "true")"
 VERBOSE="${SECURITY_FIX_VERBOSE:-false}"
@@ -32,36 +32,36 @@ BACKUP_DIR="${AUDIT_DIR}/backups/${TIMESTAMP}"
 
 mkdir -p "$AUDIT_DIR" "$BACKUP_DIR"
 
-# ── 手术刀式低危模式库 ──────────────────────────────────────────────────────
-# 每一条都是经过人工审计的、100% 确定为调试/临时/废弃代码的正则
-# 核心原则：宁可漏删一千，不可误删一行
+# ── Surgical Low-risk pattern library ──────────────────────────────────────────────────────
+# Each pattern is a human-audited regex 100% confirmed as debug/temp/deprecated code
+# Core principle: better to miss a thousand than falsely delete one
 
-# 校验 Bash 版本：declare -A (关联数组) 需要 Bash 4.0+
+# Bash version check: declare -A (associative arrays) require Bash 4.0+
 if [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
-  echo "[ERROR] 此脚本需要 Bash 4.0 或更高版本，当前版本: ${BASH_VERSION}" >&2
-  echo "[ERROR] macOS 默认 bash 3.2 不支持关联数组，请安装 Bash 4+:" >&2
+  echo "[ERROR] This script requires Bash 4.0+. Current version: ${BASH_VERSION}" >&2
+  echo "[ERROR] macOS default bash 3.2 does not support associative arrays. Install Bash 4+:" >&2
   echo "[ERROR]   brew install bash" >&2
   exit 1
 fi
 
 declare -A SURGICAL_PATTERNS
 SURGICAL_PATTERNS=(
-  # ── Python 调试/临时语句 ──
+  # ── Python debug/temp statements ──
   ["py_debug_print"]='^\s*print\s*\(\s*["\x27](debug|DEBUG|temp|TEMP|test|TEST|tmp|TMP)[[:space:]:_,-]'
-  ["py_bare_print"]='^\s*print\s*\(\s*["\x27]\s*["\x27]\s*\)'            # 空 print() 占位
-  ["py_pdb_trace"]='^\s*(import\s+pdb|pdb\.set_trace|breakpoint\s*\()'   # 调试断点
+  ["py_bare_print"]='^\s*print\s*\(\s*["\x27]\s*["\x27]\s*\)'            # empty print() placeholder
+  ["py_pdb_trace"]='^\s*(import\s+pdb|pdb\.set_trace|breakpoint\s*\()'   # debug breakpoint
 
-  # ── JS/TS 调试语句 ──
+  # ── JS/TS debug statements ──
   ["js_debug_console"]='^\s*console\.(log|debug)\s*\(\s*["\x27](debug|DEBUG|temp|TEMP|test|TEST|tmp|TMP)[[:space:]:_,-]'
   ["js_bare_console"]='^\s*console\.(log|debug)\s*\(\s*["\x27]\s*["\x27]\s*\)'
   ["js_debugger"]='^\s*debugger\s*;?\s*$'
 
-  # ── 通用无用安全注释行 ──
+  # ── Generic useless security comment lines ──
   ["comment_temp_key"]='^\s*(//|#|<!--)\s*(临时|测试|temp|test|debug)\s*(密钥|密码|key|secret|token|password)'
-  ["comment_todo_empty"]='^\s*(//|#)\s*(TODO|FIXME|HACK)\s*:\s*$'       # 空的无行动 TODO
+  ["comment_todo_empty"]='^\s*(//|#)\s*(TODO|FIXME|HACK)\s*:\s*$'       # empty no-action TODO
 )
 
-# ── 文件范围：只操作 git 追踪文件，尊重 .gitignore ────────────────────────
+# ── File scope: only operate on git-tracked files, respect .gitignore ────────────────────────
 get_tracked_files() {
   if git rev-parse --git-dir >/dev/null 2>&1; then
     git ls-files --cached --others --exclude-standard -- '*.py' '*.js' '*.ts' '*.java' '*.vue' 2>/dev/null || true
@@ -70,13 +70,13 @@ get_tracked_files() {
   fi
 }
 
-# ── 对单个文件的单条模式做安全匹配 ────────────────────────────────────────
+# ── Safe pattern matching on a single file ────────────────────────────────────────
 match_pattern_in_file() {
   local file="$1"
   local pattern_label="$2"
   local pattern="$3"
 
-  # 跳过 node_modules、.git、__pycache__、venv 等
+  # Skip node_modules, .git, __pycache__, venv, etc.
   case "$file" in
     */node_modules/*|*/.git/*|*/__pycache__/*|*/venv/*|*/.venv/*|*/vendor/*|*/vuln_cases/*|*/vuln_samples/*|*/security_test_fixtures/*) return ;;
   esac
@@ -87,33 +87,33 @@ match_pattern_in_file() {
   grep -n -E "$pattern" "$file" 2>/dev/null || true
 }
 
-# ── 安全地删除文件中的匹配行 (使用 perl 跨平台兼容) ──────────────────────
+# ── Safely delete matching lines from file (cross-platform perl) ──────────────────────
 apply_fix() {
   local file="$1"
   local pattern="$2"
   local label="$3"
 
-  # 创建备份
+  # Create backup
   local backup="${BACKUP_DIR}/$(echo "$file" | tr '/' '_')"
   cp "$file" "$backup"
 
-  # 使用 perl 而非 sed -i (彻底解决 BSD/GNU 兼容性问题)
+  # Use perl instead of sed -i (fully resolves BSD/GNU compatibility)
   local before_lines
   before_lines=$(wc -l < "$file")
-  # 使用 Perl -s 开关安全传递变量，避免 Shell 变量内插到 Perl 代码字符串中
+  # Use Perl -s switch for safe variable passing, avoiding shell var interpolation into Perl code
   perl -i.bak -sne 'print unless $pat' -- -pat="$pattern" "$file" 2>/dev/null || {
-    echo "  [ERROR] perl 修复失败: ${file}" | tee -a "$AUDIT_LOG"
-    cp "$backup" "$file"  # 回滚
+    echo "  [ERROR] perl fix failed: ${file}" | tee -a "$AUDIT_LOG"
+    cp "$backup" "$file"  # rollback
     return 1
   }
-  rm -f "${file}.bak" 2>/dev/null || true  # 清理 perl -i 产生的 .bak
+  rm -f "${file}.bak" 2>/dev/null || true  # clean up perl -i generated .bak
 
   local after_lines
   after_lines=$(wc -l < "$file")
   local removed=$((before_lines - after_lines))
 
   if [[ "$removed" -gt 0 ]]; then
-    echo "  [FIXED] ${file} — 模式:${label} — 删除 ${removed} 行 (备份: ${backup})" | tee -a "$AUDIT_LOG"
+    echo "  [FIXED] ${file} — Mode:${label} — Deleted ${removed} line(s) (backup: ${backup})" | tee -a "$AUDIT_LOG"
     if [[ "$VERBOSE" == "true" ]]; then
       echo "  --- diff ---" >> "$AUDIT_LOG"
       diff -u "$backup" "$file" >> "$AUDIT_LOG" 2>/dev/null || true
@@ -121,17 +121,17 @@ apply_fix() {
     fi
     return 0
   else
-    # 无变化，回收备份
+    # No changes, discard backup
     rm -f "$backup" 2>/dev/null || true
     return 0
   fi
 }
 
-# ── 主流程 ──────────────────────────────────────────────────────────────────
+# ── Main flow ──────────────────────────────────────────────────────────────────
 echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║  Security Fix Hook — 低危漏洞自动修复审计                  ║"
-echo "║  时间: ${TIMESTAMP}                                          ║"
-echo "║  模式: $( [[ "$DRY_RUN" == "true" ]] && echo '🔍 干跑审计 (不修改文件)' || echo '🔧 执行修复' )║"
+echo "║  Security Fix Hook — Low-risk vulnerability auto-fix audit                  ║"
+echo "║  Time: ${TIMESTAMP}                                          ║"
+echo "║  Mode: $( [[ "$DRY_RUN" == "true" ]] && echo '🔍 Dry-run audit (no file modification)' || echo '🔧 Apply fix' )║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
 
@@ -143,11 +143,11 @@ echo ""
   echo ""
 } >> "$AUDIT_LOG"
 
-# ── 阶段1: 全量匹配扫描 ────────────────────────────────────────────────────
+# ── Phase 1: Full match scan ────────────────────────────────────────────────────
 TOTAL_MATCHES=0
 declare -A FILE_MATCHES
 
-echo "[阶段1] 扫描低危调试/临时/废弃代码..."
+echo "[Phase 1] Scanning for Low-risk debug/temp/deprecated code..."
 while IFS= read -r file; do
   for label in "${!SURGICAL_PATTERNS[@]}"; do
     pattern="${SURGICAL_PATTERNS[$label]}"
@@ -166,18 +166,18 @@ while IFS= read -r file; do
 done < <(get_tracked_files)
 
 echo ""
-echo "[阶段1] 扫描完成 — 共发现 ${TOTAL_MATCHES} 处低危可修复项"
+echo "[Phase 1] Scan complete — found ${TOTAL_MATCHES} Low-risk fixable items"
 
 if [[ "$TOTAL_MATCHES" -eq 0 ]]; then
-  echo "[Security-Fix-Hook] ✅ 无低危修复项，审计完成。"
+  echo "[Security-Fix-Hook] ✅ No Low-risk fixable items — audit complete."
   exit 0
 fi
 
-# ── 阶段2: 应用修复 (仅在非干跑模式) ──────────────────────────────────────
+# ── Phase 2: Apply fixes (non-dry-run only) ──────────────────────────────────────
 if [[ "$DRY_RUN" == "true" ]]; then
   echo ""
-  echo "[阶段2] ⏭️  跳过修复 — 当前为干跑模式"
-  echo "  如需执行修复，请运行: SECURITY_FIX_APPLY=true ./auto-fix-security.sh"
+  echo "[Phase 2] ⏭️  Skipping fixes — current mode is dry-run"
+  echo "  To apply fixes, run: SECURITY_FIX_APPLY=true ./auto-fix-security.sh"
   echo ""
   echo "═══════════════════════════════════════════════════════════════" >> "$AUDIT_LOG"
   echo "  DRY RUN COMPLETE — ${TOTAL_MATCHES} matches found, 0 files modified" >> "$AUDIT_LOG"
@@ -186,7 +186,7 @@ if [[ "$DRY_RUN" == "true" ]]; then
 fi
 
 echo ""
-echo "[阶段2] 执行修复 (已创建备份至 ${BACKUP_DIR})..."
+echo "[Phase 2] Apply fix (Backups created in ${BACKUP_DIR})..."
 FIXED_COUNT=0
 ERROR_COUNT=0
 
@@ -202,35 +202,35 @@ for key in "${!FILE_MATCHES[@]}"; do
   fi
 done
 
-# ── 阶段3: 输出修复后合规自检 ──────────────────────────────────────────────
+# ── Phase 3: Post-fix compliance self-check ──────────────────────────────────────────────
 echo ""
-echo "[阶段3] 修复后合规自检..."
+echo "[Phase 3] Post-fix compliance self-check..."
 
-# 验证修复后的文件没有语法错误 (Python)
+# Verify fixed files have no syntax errors (Python)
 while IFS= read -r file; do
   case "${file##*.}" in
     py)
       if command -v python3 &>/dev/null; then
-        python3 -m py_compile "$file" 2>/dev/null || echo "  [WARN] ${file} — 修复后 Python 语法校验失败，请人工检查"
+        python3 -m py_compile "$file" 2>/dev/null || echo "  [WARN] ${file} — Post-fix Python syntax validation failed — manual review required"
       fi
       ;;
   esac
 done < <(get_tracked_files | grep '\.py$' || true)
 
-# ── 审计汇总 ────────────────────────────────────────────────────────────────
+# ── Audit summary ────────────────────────────────────────────────────────────────
 {
   echo ""
   echo "═══════════════════════════════════════════════════════════════"
   echo "  FIX SUMMARY — ${TIMESTAMP}"
-  echo "  总匹配项: ${TOTAL_MATCHES}"
-  echo "  成功修复: ${FIXED_COUNT}"
-  echo "  修复失败: ${ERROR_COUNT}"
-  echo "  备份目录: ${BACKUP_DIR}"
+  echo "  Total matches: ${TOTAL_MATCHES}"
+  echo "  Successfully fixed: ${FIXED_COUNT}"
+  echo "  Fix errors: ${ERROR_COUNT}"
+  echo "  Backup directory: ${BACKUP_DIR}"
   echo "═══════════════════════════════════════════════════════════════"
 } | tee -a "$AUDIT_LOG"
 
 echo ""
-echo "[Security-Fix-Hook] ✅ 低危漏洞修复完成。审计日志: ${AUDIT_LOG}"
+echo "[Security-Fix-Hook] ✅ Low-risk vulnerability fix complete. Audit log: ${AUDIT_LOG}"
 
 if [[ "$ERROR_COUNT" -gt 0 ]]; then
   exit 1

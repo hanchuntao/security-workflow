@@ -1,4 +1,4 @@
-"""持久化层 — JSON 文件存储审计日志与工单状态."""
+"""Persistence layer — JSON file storage for audit logs and ticket state."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from ..model import Ticket, ScanFinding, AuditEntry
 from ..definition.enums import RiskLevel, TicketStatus
 from ..definition.constants import DEFAULT_DATA_DIR
 
-# 存储根目录（可通过环境变量覆盖）
+# Storage root directory (overridable via environment variable)
 STORAGE_ROOT = Path(os.environ.get("SECURITY_WORKFLOW_DATA", DEFAULT_DATA_DIR))
 lock = threading.Lock()
 
@@ -28,7 +28,7 @@ def _audit_file() -> Path:
 
 
 def _read_json(path: Path) -> dict[str, Any]:
-    """线程安全读 JSON."""
+    """Thread-safe JSON read."""
     with lock:
         if not path.exists():
             return {}
@@ -37,7 +37,7 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 
 def _write_json(path: Path, data: dict[str, Any]) -> None:
-    """线程安全写 JSON."""
+    """Thread-safe JSON write."""
     with lock:
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
@@ -45,14 +45,14 @@ def _write_json(path: Path, data: dict[str, Any]) -> None:
 
 
 def save_ticket(ticket: Ticket) -> None:
-    """保存或更新工单."""
+    """Save or update a ticket."""
     all_tickets = _read_json(_tickets_file())
     all_tickets[ticket.ticket_id] = ticket.to_dict()
     _write_json(_tickets_file(), all_tickets)
 
 
 def load_ticket(ticket_id: str) -> Ticket | None:
-    """加载单个工单."""
+    """Load a single ticket by ID."""
     all_tickets = _read_json(_tickets_file())
     data = all_tickets.get(ticket_id)
     if not data:
@@ -61,7 +61,7 @@ def load_ticket(ticket_id: str) -> Ticket | None:
 
 
 def load_all_tickets() -> list[Ticket]:
-    """加载全部工单."""
+    """Load all tickets."""
     all_tickets = _read_json(_tickets_file())
     tickets: list[Ticket] = []
     for data in all_tickets.values():
@@ -73,7 +73,7 @@ def load_all_tickets() -> list[Ticket]:
 
 
 def append_audit(entry: AuditEntry) -> None:
-    """追加一条审计日志."""
+    """Append an audit log entry."""
     with lock:
         _audit_file().parent.mkdir(parents=True, exist_ok=True)
         with open(_audit_file(), "a", encoding="utf-8") as f:
@@ -81,7 +81,7 @@ def append_audit(entry: AuditEntry) -> None:
 
 
 def read_audit_trail(ticket_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
-    """读取审计轨迹，可按 ticket_id 过滤."""
+    """Read audit trail, optionally filtered by ticket_id."""
     if not _audit_file().exists():
         return []
     entries: list[dict[str, Any]] = []
@@ -101,7 +101,7 @@ def read_audit_trail(ticket_id: str | None = None, limit: int = 100) -> list[dic
 
 
 def _dict_to_ticket(data: dict[str, Any]) -> Ticket:
-    """将字典还原为 Ticket 对象."""
+    """Reconstruct a Ticket object from a dict."""
     findings = []
     for f_data in data.get("findings", []):
         findings.append(

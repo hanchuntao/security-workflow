@@ -1,12 +1,12 @@
-# 企业安全编码示例库
-## 目录作用
-存放各技术栈「违规代码示例 + 合规修复样板」
-用于研发团队统一安全编码标准、新人培训、项目接入参考。
+# Enterprise Secure Coding Example Library
+## Purpose
+Stores the "insecure code examples + compliant fix templates" for each tech stack.
+Used by R&D teams for unified secure coding standards, onboarding training, and project integration reference.
 
-## 使用规范
-1. 业务开发禁止编写 examples 内的违规代码
-2. 统一参考 examples 合规写法落地业务功能
-3. 新增安全规则需同步更新对应示例样板
+## Usage Rules
+1. Business development must NOT write insecure code following these examples
+2. Always reference the compliant examples for implementing business features
+3. New security rules must sync with updated example templates
 
-## 覆盖技术栈
+## Covered Tech Stacks
 Python / JavaScript / TypeScript / Java

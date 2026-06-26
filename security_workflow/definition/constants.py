@@ -1,4 +1,4 @@
-"""共享常量定义 — 统一配置项，消除多模块硬编码重复."""
+"""Shared constants — unified configuration, eliminating hardcoded path duplication across modules."""
 
-# 默认数据存储目录（可通过 SECURITY_WORKFLOW_DATA 环境变量覆盖）
+# Default data storage directory (overridable via SECURITY_WORKFLOW_DATA env var)
 DEFAULT_DATA_DIR = ".security-workflow-data"

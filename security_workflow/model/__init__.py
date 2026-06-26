@@ -11,7 +11,7 @@ from ..definition.enums import RiskLevel, TicketStatus, initial_status
 
 @dataclass
 class ScanFinding:
-    """单条漏洞扫描结果 — 对齐 security-scanner 9 项结构化输出."""
+    """Single vulnerability scan result — aligned with security-scanner 9-field structured output."""
 
     risk_id: str
     risk_level: RiskLevel
@@ -20,13 +20,13 @@ class ScanFinding:
     risk_desc: str
     compliance_rule: str
     fix_suggest: str
-    scan_mode: str  # "全量扫描" | "增量变更扫描" | "MR评审扫描" | "上线卡点扫描"
+    scan_mode: str  # "full scan" | "incremental change scan" | "MR review scan" | "deployment gate scan"
     workflow_status: TicketStatus
 
 
 @dataclass
 class Ticket:
-    """安全评审工单."""
+    """Security review ticket."""
 
     ticket_id: str
     risk_level: RiskLevel
@@ -34,13 +34,13 @@ class Ticket:
     findings: list[ScanFinding] = field(default_factory=list)
     created_at: str = ""
     updated_at: str = ""
-    deadline: str = ""          # ISO-format 截止时间
-    assignee: str = ""          # 当前处理人
-    reviewer1: str = ""         # 复核人1 (高危强制)
-    reviewer2: str = ""         # 复核人2 (高危强制)
-    reject_reason: str = ""     # 驳回原因
-    branch: str = ""            # 关联分支
-    project: str = ""           # 关联项目
+    deadline: str = ""          # ISO-format deadline
+    assignee: str = ""          # Current assignee
+    reviewer1: str = ""         # Reviewer 1 (required for High)
+    reviewer2: str = ""         # Reviewer 2 (required for High)
+    reject_reason: str = ""     # Rejection reason
+    branch: str = ""            # Associated branch
+    project: str = ""           # Associated project
 
     def __post_init__(self):
         if not self.created_at:
@@ -67,9 +67,9 @@ class Ticket:
         branch: str = "",
         project: str = "",
     ) -> Ticket:
-        """工厂方法：创建工单并自动设置初始状态."""
+        """Factory method: create a ticket with auto-set initial status and deadline."""
         status = initial_status(risk_level)
-        # 设定截止时间
+        # Set deadline
         from ..timer.clock import compute_deadline
         deadline = compute_deadline(risk_level)
 
@@ -86,7 +86,7 @@ class Ticket:
 
 @dataclass
 class AuditEntry:
-    """审计日志条目."""
+    """Audit log entry."""
 
     timestamp: str
     ticket_id: str
@@ -94,7 +94,7 @@ class AuditEntry:
     from_status: str
     to_status: str
     operator: str        # "system" | "reviewer:name" | "auto"
-    detail: str = ""     # 补充说明
+    detail: str = ""     # Additional notes
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

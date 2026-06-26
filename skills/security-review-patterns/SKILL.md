@@ -1,21 +1,21 @@
-# SKILL：security-review-patterns
-## 用途
-统一企业代码安全审查标准、SAST扫描规则、漏洞分级规范、自动修复策略、流程审计规则，所有扫描、修复、工单流转、上线卡点操作必须严格遵循本规范，保障全流水线标准统一、合规可控、可审计。
+# SKILL: security-review-patterns
+## Purpose
+Unified enterprise code security review standards, SAST scan rules, vulnerability classification norms, auto-fix strategies, and process audit rules. All scanning, fixing, ticket workflow, and deployment gate operations must strictly follow this specification, ensuring pipeline-wide consistency, compliance control, and auditability.
 
-## 适用范围
-1. security-scanner 全量/增量漏洞扫描判定
-2. quick-fix 三级漏洞分级修复执行
-3. /review 代码安全评审流程校验
-4. /deploy 上线安全卡点准入判定
-5. 安全工单流转、超时、抄送、驳回、闭环审计
+## Scope
+1. security-scanner full/incremental vulnerability scan judgments
+2. quick-fix 3-tier vulnerability remediation execution
+3. `/review` code security review process validation
+4. `/deploy` deployment security gate admission decisions
+5. Security ticket workflow — transitions, timeouts, escalations, rejections, closure audits
 
-## 子规范章节清单
-1. sast-scan.md：SAST静态扫描规则、风险分级标准、漏洞判定依据
-2. code-review-rule.md：人工代码安全评审检查清单、MR审核标准
-3. workflow-audit.md：安全审批流程流转、超时管控、审计留存规范
+## Sub-Specification Chapters
+1. sast-scan.md: SAST static scan rules, risk classification criteria, vulnerability judgment standards
+2. code-review-rule.md: Manual code security review checklist, MR review standards
+3. workflow-audit.md: Security approval workflow transitions, timeout management, audit retention standards
 
-## 执行强制规则
-1. 所有智能体、命令、钩子执行逻辑必须对齐本体系规范，禁止自定义规则
-2. 漏洞风险等级、修复策略、工单状态三者严格一一绑定，无例外场景
-3. 生产环境所有安全卡点、评审、整改行为必须留痕归档
-4. 所有规范更新需同步迭代全流水线能力，保证全局统一
+## Mandatory Execution Rules
+1. All agents, commands, and hooks must align with this specification system — no custom rules allowed
+2. Vulnerability risk level, fix strategy, and ticket state are strictly 1:1:1 bound — no exceptions
+3. All production security gates, reviews, and remediation actions must be logged and archived
+4. All specification updates must sync across the entire pipeline to maintain global consistency
