@@ -1,6 +1,6 @@
 {
   "name": "security-workflow",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Enterprise-grade code security review pipeline — SAST static scanning + 3-tier risk remediation + ticket workflow + deployment gate + compliance audit, full closed loop",
   "author": {
     "name": "Chuntao Han",

@@ -121,7 +121,7 @@ def handle_request(req: dict[str, Any]) -> dict[str, Any]:
             "capabilities": {"tools": {}},
             "serverInfo": {
                 "name": "security-workflow-mcp-engine",
-                "version": "1.0.1",
+                "version": "1.0.3",
             },
         })
 
