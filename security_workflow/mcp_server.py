@@ -16,6 +16,7 @@ Protocol: JSON-RPC 2.0 over stdio, conforming to MCP (Model Context Protocol).
 from __future__ import annotations
 
 import json
+import os
 import sys
 import traceback
 from typing import Any
@@ -152,7 +153,7 @@ def handle_request(req: dict[str, Any]) -> dict[str, Any]:
         except Exception as e:
             sys.stderr.write(f"[security-workflow-engine] Tool dispatch error ({tool_name}): {type(e).__name__}: {e}\n")
             sys.stderr.flush()
-            return _jsonrpc_error(req_id, -32000, f"Internal error: {type(e).__name__}", "")
+            return _jsonrpc_error(req_id, -32000, "Internal server error", "")
 
     # ── unknown ────────────────────────────────────────────────────
     return _jsonrpc_error(req_id, -32601, f"Unknown method: {method}")
@@ -249,8 +250,13 @@ def main() -> None:
     try:
         from .core import check_and_mark_overdue
         check_and_mark_overdue()
-    except Exception:
-        pass  # Silent — may have no data on first run
+    except FileNotFoundError:
+        pass  # Expected on first run — no ticket data yet
+    except json.JSONDecodeError:
+        pass  # Expected if ticket file is empty or malformed on first run
+    except Exception as e:
+        sys.stderr.write(f"[security-workflow-engine] [startup] Overdue check skipped: {type(e).__name__}: {e}\n")
+        sys.stderr.flush()
 
     for line in sys.stdin:
         line = line.strip()
@@ -263,20 +269,24 @@ def main() -> None:
                 sys.stdout.write(json.dumps(response, ensure_ascii=False) + "\n")
                 sys.stdout.flush()
         except json.JSONDecodeError:
+            # Sanitize raw input to prevent log injection; limit to 100 chars
+            safe_line = line[:100].replace("\n", "\\n").replace("\r", "\\r")
             sys.stdout.write(
                 json.dumps(
-                    _jsonrpc_error(None, -32700, "Parse error", line),
+                    _jsonrpc_error(None, -32700, "Parse error", safe_line),
                     ensure_ascii=False,
                 )
                 + "\n"
             )
             sys.stdout.flush()
         except Exception:
+            tb = traceback.format_exc()
             if os.environ.get("SECURITY_WORKFLOW_DEBUG", "").lower() in ("1", "true"):
-                tb = traceback.format_exc()
                 sys.stderr.write(f"[security-workflow-engine] {tb}\n")
             else:
-                sys.stderr.write("[security-workflow-engine] Error processing request\n")
+                # Always emit exception summary for monitoring; full traceback only in debug mode
+                last_line = tb.strip().split("\n")[-1]
+                sys.stderr.write(f"[security-workflow-engine] Request error: {last_line}\n")
             sys.stderr.flush()
 
 

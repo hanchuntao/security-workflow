@@ -8,6 +8,7 @@ Language is controlled by:
 from __future__ import annotations
 
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -32,19 +33,73 @@ def resolve_lang(explicit: str | None = None) -> str:
     return "en"
 
 
+# ── Translation maps (DB values → English display labels) ─────────────────────
+
+# RiskLevel enum values → English labels
+_RISK_EN: dict[str, str] = {"高危": "High", "中危": "Medium", "低危": "Low"}
+
+# TicketStatus enum values → English labels
+_STATUS_EN: dict[str, str] = {
+    "待人工整改": "Pending Fix",
+    "双人评审中": "Dual Review",
+    "整改复核中": "Re-Check",
+    "闭环归档": "Closed",
+    "待修复确认": "Pending Confirm",
+    "人工整改中": "In Fix",
+    "单人复核中": "Single Review",
+    "限期闭环": "Closed (Deadline)",
+    "待自动修复": "Pending Auto-Fix",
+    "自动整改中": "Auto-Fixing",
+    "自动闭环归档": "Auto-Closed",
+    "已驳回": "Rejected",
+    "已超时": "Overdue",
+}
+
+
+def _tr_risk(zh: str) -> str:
+    """Translate a Chinese risk-level DB value to English; pass-through if unknown."""
+    return _RISK_EN.get(zh, zh)
+
+
+def _tr_status(zh: str) -> str:
+    """Translate a Chinese status DB value to English; pass-through if unknown."""
+    return _STATUS_EN.get(zh, zh)
+
+
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S UTC")
 
 
+def _is_closed(ticket: dict[str, Any]) -> bool:
+    """Check whether a ticket dict represents a closed state."""
+    status = ticket.get("status", "")
+    return "闭环" in status  # All closed states contain "闭环" (Chinese enum convention)
+
+
 def _counts(tickets: list[dict[str, Any]]) -> dict[str, int]:
-    """Count vulnerabilities per risk level.
+    """Count vulnerabilities per risk level (all tickets, including closed).
 
     Keys use Chinese enum values to match stored ticket data.
     """
     c = {"高危": 0, "中危": 0, "低危": 0}
     for t in tickets:
+        level = t.get("risk_level", "")
+        if level in c:
+            c[level] += len(t.get("findings", []))
+    return c
+
+
+def _counts_open(tickets: list[dict[str, Any]]) -> dict[str, int]:
+    """Count vulnerabilities per risk level — only unclosed tickets.
+
+    Used for rating and deploy-gate compliance statements.
+    """
+    c = {"高危": 0, "中危": 0, "低危": 0}
+    for t in tickets:
+        if _is_closed(t):
+            continue
         level = t.get("risk_level", "")
         if level in c:
             c[level] += len(t.get("findings", []))
@@ -74,18 +129,19 @@ def _generate_review_report_en(
 ) -> str:
     """English /review report."""
     now = _now()
-    counts = _counts(tickets)
+    counts = _counts(tickets)            # All findings (total history)
+    open_counts = _counts_open(tickets)   # Only unclosed findings
     all_findings = _flatten(tickets)
     total = sum(counts.values())
 
-    if counts["高危"] > 0:
+    if open_counts["高危"] > 0:
         rating = "🔴 HIGH — Deployment blocked, immediate remediation required"
-    elif counts["中危"] > 0:
+    elif open_counts["中危"] > 0:
         rating = "🟡 MEDIUM — Remediate within deadline, then re-review"
-    elif counts["低危"] > 0:
+    elif open_counts["低危"] > 0:
         rating = "🟢 GOOD — Low-risk items logged in ledger"
     else:
-        rating = "✅ EXCELLENT — No security risks found"
+        rating = "✅ EXCELLENT — All security issues closed"
 
     L: list[str] = []
 
@@ -133,15 +189,15 @@ def _generate_review_report_en(
     L.append("---")
     L.append("## III. Fix Strategy & Remediation Plan")
     L.append("")
-    for level, emoji, strategy, deadline_note in [
-        ("高危", "🔴", "Manual fix (auto-fix forbidden)", "Within 72 hours"),
-        ("中危", "🟡", "Semi-auto confirmed fix (human approval required)", "Within 5 business days"),
-        ("低危", "🟢", "Full-auto silent fix (no human intervention)", "Auto-closed within 7 days"),
+    for level, emoji, label, strategy, deadline_note in [
+        ("高危", "🔴", "High", "Manual fix (auto-fix forbidden)", "Within 72 hours"),
+        ("中危", "🟡", "Medium", "Semi-auto confirmed fix (human approval required)", "Within 5 business days"),
+        ("低危", "🟢", "Low", "Full-auto silent fix (no human intervention)", "Auto-closed within 7 days"),
     ]:
         related = [t for t in tickets if t.get("risk_level") == level]
         if not related:
             continue
-        L.append(f"### {emoji} {level} — {strategy}")
+        L.append(f"### {emoji} {label} — {strategy}")
         L.append("")
         L.append("| Ticket ID | Findings | Status | Deadline |")
         L.append("|-----------|----------|--------|----------|")
@@ -150,7 +206,7 @@ def _generate_review_report_en(
             fcnt = len(t.get("findings", []))
             status = t.get("status", "")
             deadline = (t.get("deadline", "") or "")[:16]
-            L.append(f"| `{tid}` | {fcnt} | **{status}** | {deadline} |")
+            L.append(f"| `{tid}` | {fcnt} | **{_tr_status(status)}** | {deadline} |")
         L.append("")
         L.append(f"⏱️ Deadline: {deadline_note}")
         L.append("")
@@ -185,7 +241,7 @@ def _generate_review_report_en(
     L.append("- ✅ Aligned with OWASP Top 10 + Enterprise Security Coding Standards")
     L.append("- ✅ Tiered fix strategy: High (Manual) / Medium (Semi-auto) / Low (Full-auto)")
     L.append("- ✅ Ticket data structurally stored with complete, traceable audit trail")
-    L.append(f"- {'⚠️ Unclosed High-risk vulnerabilities exist — /deploy will be BLOCKED' if counts['高危'] > 0 else '✅ No High-risk vulnerabilities — ready for /deploy stage'}")
+    L.append(f"- {'⚠️ Unclosed High-risk vulnerabilities exist — /deploy will be BLOCKED' if open_counts['高危'] > 0 else '✅ All High-risk vulnerabilities closed — ready for /deploy stage'}")
     L.append("")
     L.append(f"*Report generated: {now} | Engine: security-workflow-mcp-engine v1.0.1*")
     L.append(f"*Data directory: {STORAGE_ROOT}*")
@@ -202,17 +258,18 @@ def _generate_review_report_zh(
     """中文 /review 评审报告（等保2.0 兼容）."""
     now = _now()
     counts = _counts(tickets)
+    open_counts = _counts_open(tickets)
     all_findings = _flatten(tickets)
     total = sum(counts.values())
 
-    if counts["高危"] > 0:
+    if open_counts["高危"] > 0:
         rating = "🔴 高危 — 禁止上线，立即整改"
-    elif counts["中危"] > 0:
+    elif open_counts["中危"] > 0:
         rating = "🟡 中 — 限期整改后复查"
-    elif counts["低危"] > 0:
+    elif open_counts["低危"] > 0:
         rating = "🟢 良好 — 低危项记录台账"
     else:
-        rating = "✅ 优秀 — 无安全风险"
+        rating = "✅ 优秀 — 全部安全问题已闭环"
 
     L: list[str] = []
 
@@ -312,7 +369,7 @@ def _generate_review_report_zh(
     L.append("- ✅ 遵循 OWASP Top10 + 等保2.0 + 企业安全编码规范")
     L.append("- ✅ 分级修复策略: 高危人工 / 中危半自动 / 低危全自动")
     L.append("- ✅ 工单数据已结构化存储，审计轨迹完整可追溯")
-    L.append(f"- {'⚠️ 存在未闭环高危漏洞，/deploy 将被阻断' if counts['高危'] > 0 else '✅ 无高危漏洞，可进入 /deploy 阶段'}")
+    L.append(f"- {'⚠️ 存在未闭环高危漏洞，/deploy 将被阻断' if open_counts['高危'] > 0 else '✅ 所有高危漏洞已闭环，可进入 /deploy 阶段'}")
     L.append("")
     L.append(f"*报告生成: {now} | 引擎: security-workflow-mcp-engine v1.0.1*")
     L.append(f"*数据目录: {STORAGE_ROOT}*")
@@ -393,12 +450,12 @@ def _generate_deploy_report_en(
         L.append("|-----------|------------|-----------------|--------|----------|")
         for b in blocked:
             tid = b.get("ticket_id", "")
-            level = b.get("risk_level", "")
+            level = _tr_risk(b.get("risk_level", ""))
             reason = b.get("reason", "")
             match = [t for t in tickets if t.get("ticket_id") == tid]
             status = match[0].get("status", "—") if match else "—"
             deadline = (match[0].get("deadline", "") or "")[:16] if match else "—"
-            L.append(f"| `{tid}` | {level} | {reason} | **{status}** | {deadline} |")
+            L.append(f"| `{tid}` | {level} | {reason} | **{_tr_status(status)}** | {deadline} |")
         L.append("")
         L.append("> ⛔ All blocking items above must be fully closed before re-running `/deploy`.")
         L.append("")
@@ -410,7 +467,7 @@ def _generate_deploy_report_en(
     L.append("|--------|-------|")
     status_groups: dict[str, int] = {}
     for t in tickets:
-        s = t.get("status", "Unknown")
+        s = _tr_status(t.get("status", "Unknown"))
         status_groups[s] = status_groups.get(s, 0) + 1
     for s, n in sorted(status_groups.items()):
         L.append(f"| {s} | {n} |")
@@ -424,12 +481,12 @@ def _generate_deploy_report_en(
     L.append("|-----------|------------|--------|----------|----------|")
     for t in tickets:
         tid = t.get("ticket_id", "")
-        level = t.get("risk_level", "")
+        level = _tr_risk(t.get("risk_level", ""))
         status = t.get("status", "")
         fcnt = len(t.get("findings", []))
         deadline = (t.get("deadline", "") or "")[:16]
         icon = "✅" if "闭环" in status else "⏳"
-        L.append(f"| `{tid}` | {level} | {icon} {status} | {fcnt} | {deadline} |")
+        L.append(f"| `{tid}` | {level} | {icon} {_tr_status(status)} | {fcnt} | {deadline} |")
     L.append("")
 
     L.append("---")
@@ -457,7 +514,7 @@ def _generate_deploy_report_en(
         L.append("| Ticket ID | Risk Level | Warning Reason |")
         L.append("|-----------|------------|----------------|")
         for w in warnings:
-            L.append(f"| `{w.get('ticket_id','')}` | {w.get('risk_level','')} | {w.get('reason','')} |")
+            L.append(f"| `{w.get('ticket_id','')}` | {_tr_risk(w.get('risk_level',''))} | {w.get('reason','')} |")
         L.append("")
         L.append("> ⚠️ Warnings do not block this deployment but must be resolved within their deadlines. Overdue items auto-escalate to blocking level.")
         L.append("")
@@ -637,11 +694,25 @@ def generate_deploy_report(
 #  Public API
 # ═══════════════════════════════════════════════════════════════════════════════
 
+def _sanitize_path_segment(name: str) -> str:
+    """Strip path separators and traversal sequences from a filename segment."""
+    # Replace any path separator or traversal sequence with underscore
+    sanitized = re.sub(r'[/\\]|\.\.', '_', name)
+    # Also strip any non-filename-safe characters
+    sanitized = re.sub(r'[^\w\-.]', '_', sanitized)
+    return sanitized or "unknown"
+
+
 def save_report(content: str, project: str, report_type: str = "review") -> Path:
     """Persist report to the data directory (latest only per project+type; timestamp is in report body)."""
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    filename = f"{project}-{report_type}.md"
-    filepath = REPORTS_DIR / filename
+    safe_project = _sanitize_path_segment(project)
+    safe_type = _sanitize_path_segment(report_type)
+    filename = f"{safe_project}-{safe_type}.md"
+    filepath = (REPORTS_DIR / filename).resolve()
+    # Fence check: ensure resolved path stays within REPORTS_DIR
+    if not str(filepath).startswith(str(REPORTS_DIR.resolve())):
+        raise ValueError(f"Report path traversal detected: {filename}")
     filepath.write_text(content, encoding="utf-8")
     return filepath
 

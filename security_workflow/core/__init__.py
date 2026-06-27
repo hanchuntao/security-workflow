@@ -46,8 +46,12 @@ def detect_project_name() -> str:
     # 2. Config file (path normalization + project root fence validation)
     PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
     config_path = (PROJECT_ROOT / ".security-workflow").resolve()
-    # Fence check: ensure resolved path is within project root
-    if not str(config_path).startswith(str(PROJECT_ROOT.resolve())):
+    # Fence check: ensure resolved config path is within project root
+    # Use casefold() for case-insensitive comparison (Windows-safe) and compare
+    # fully resolved paths to prevent symlink escape
+    root_str = str(PROJECT_ROOT.resolve()).casefold()
+    config_str = str(config_path).casefold()
+    if not config_str.startswith(root_str + os.sep) and config_str != root_str:
         # Path escape — skip invalid config
         _cached_project = Path.cwd().name
         return _cached_project
@@ -180,7 +184,7 @@ def reject_ticket(ticket_id: str, reason: str, operator: str) -> Ticket:
 
     ticket = load_ticket(ticket_id)
     if ticket is None:
-        raise ValueError(f"工单不存在: {ticket_id}")
+        raise ValueError(f"Ticket not found: {ticket_id}")
 
     ticket.reject_reason = reason
     return transition_ticket(

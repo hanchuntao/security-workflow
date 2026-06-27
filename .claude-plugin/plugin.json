@@ -26,9 +26,8 @@
   "skills": ["./skills/security-review-patterns"],
   "mcpServers": {
     "security-workflow-mcp-engine": {
-      "command": "python3",
-      "args": ["-m", "security_workflow.mcp_server"],
-      "cwd": "${CLAUDE_PLUGIN_ROOT}",
+      "command": "python",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp_entry.py"],
       "env": {
         "ENV": "${SECURITY_WORKFLOW_ENV:-production}"
       }
